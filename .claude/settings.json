@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($venv = \"C:\\\\Users\\\\joo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Projects-CLOPOS-bot\\\\994eaae9-ab4f-4fea-ad82-4e33c6314bae\\\\scratchpad\\\\venv\"; Set-Location \"d:\\\\Projects\\\\CLOPOS bot\"; & \"$venv\\\\Scripts\\\\ruff.exe\" check --no-cache --select E,F,W,B,UP,I --line-length 120 --target-version py311 bot scripts tests migrations 2>&1 | Select-Object -Last 15; & \"$venv\\\\Scripts\\\\python.exe\" -m pytest -q -p no:cacheprovider -rf 2>&1 | Select-String -Pattern \"^E  |passed|failed|^FAILED\" | Select-Object -First 30)",
+      "PowerShell($sp = \"C:\\\\Users\\\\joo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Projects-CLOPOS-bot\\\\994eaae9-ab4f-4fea-ad82-4e33c6314bae\\\\scratchpad\"; Test-Path $sp; Test-Path \"$sp\\\\deploy\\\\remote_setup.sh\"; New-Item -ItemType Directory -Force $sp | Out-Null; python -m venv \"$sp\\\\venv\"; & \"$sp\\\\venv\\\\Scripts\\\\python.exe\" -m pip install --quiet --disable-pip-version-check -r \"D:\\\\Projects\\\\CLOPOS bot\\\\requirements-dev.txt\" ruff; & \"$sp\\\\venv\\\\Scripts\\\\python.exe\" -m pip list --disable-pip-version-check 2>$null | Select-String \"aiogram|ruff|pytest \")"
+    ]
+  }
+}
