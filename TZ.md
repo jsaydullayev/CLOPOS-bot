@@ -74,7 +74,7 @@ Bo‘lim tanlanganda ichida nima borligiga qarab ichki bo‘limlar yoki videolar
 
 - /start bosilganda salomlashuv va asosiy bo‘limlar ro‘yxati chiqadi. Salomlashuvni admin o‘zi yozadi (5.7); yozilmagan bo‘lsa standart matn chiqadi.
 - Har bo‘lim — bitta tugma, faqat nomi (video soni ko‘rsatilmaydi).
-- Ekranda 4 tagacha bo‘lim bo‘lsa — har biri alohida qatorda; ko‘proq bo‘lsa — qatorda ikkitadan.
+- Bo‘lim tugmalari qatorda ikkitadan. Barcha tugmalar ko‘k rangda (`style: primary`).
 - Bo‘limlar yaratilgan tartibda chiqadi.
 - 8 tadan ko‘p bo‘lsa — sahifalash (4.4 dagi kabi).
 
@@ -90,7 +90,7 @@ Xush kelibsiz! Kerakli bo‘limni tanlang.
 
 - Bo‘lim bosilganda faol xabar tahrirlanadi (yangi xabar yuborilmaydi).
 - Sarlavha — yo‘l: «Bo‘lim › Ichki bo‘lim». Yo‘l 60 belgidan uzun bo‘lsa, boshi «… ›» bilan qisqartiriladi. Sarlavha ostida admin yozgan bo‘lim matni chiqadi (5.7), yozilmagan bo‘lsa — hech narsa.
-- Har ichki bo‘lim — bitta tugma, faqat nomi; 4 tadan ko‘p bo‘lsa — qatorda ikkitadan (4.2 dagi kabi). 8 tadan ko‘p bo‘lsa — sahifalash.
+- Har ichki bo‘lim — bitta tugma, faqat nomi; qatorda ikkitadan (4.2 dagi kabi). 8 tadan ko‘p bo‘lsa — sahifalash.
 - «⬅️ Orqaga» bir daraja yuqoriga, «🏠 Bosh menyu» bosh menyuga qaytaradi (asosiy bo‘limda faqat «⬅️ Orqaga»).
 
 ```
@@ -103,7 +103,7 @@ Bo‘lim nomi
 
 ### 4.4 Bo‘lim — videolar ro‘yxati
 
-- Sarlavha — yo‘l, bo‘lim matni (bo‘lsa) va videolar soni.
+- Sarlavha — yo‘l va bo‘lim matni (bo‘lsa). Videolar soni ko‘rsatilmaydi.
 - Video nomlari xabar matnida raqami bilan ro‘yxat bo‘lib chiqadi: «1. Video nomi». Tugmalarda faqat raqam, qatorda to‘rttadan. Raqam bo‘limdagi tartibni bildiradi va sahifadan sahifaga davom etadi (2-sahifa 9 dan boshlanadi).
 - Sahifada 8 ta video. Ko‘p bo‘lsa pastda «◀️ 1/2 ▶️»; birinchi sahifada «◀️», oxirgisida «▶️» ko‘rinmaydi. «1/2» tugmasi hech narsa qilmaydi.
 - «⬅️ Orqaga» va «🏠 Bosh menyu» 4.3 dagi kabi ishlaydi.
@@ -111,7 +111,6 @@ Bo‘lim nomi
 
 ```
 Bo‘lim › Ichki bo‘lim
-12 ta video
 
 1. Birinchi video nomi
 2. Ikkinchi video nomi
@@ -126,10 +125,10 @@ Bo‘lim › Ichki bo‘lim
 
 ### 4.5 Video
 
-- Video tanlanganda avval video yuboriladi, keyin ro‘yxat xabari o‘chiriladi.
+- Video tanlanganda ro‘yxat xabarining o‘zi videoga aylanadi (`editMessageMedia`): xabar o‘chirilmaydi, yangisi yuborilmaydi.
 - Video ostida: nomi (qalin) va tavsif (bo‘lsa). Yo‘l va tartib raqami ko‘rsatilmaydi.
 - «◀️ Oldingi» / «Keyingi ▶️» shu bo‘lim videolarini o‘sha xabarning o‘zida almashtiradi (`editMessageMedia`). Birinchi videoda «Oldingi», oxirgisida «Keyingi» ko‘rinmaydi.
-- «⬅️ Orqaga» video xabarini o‘chiradi va ro‘yxatni **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi.
+- «⬅️ Orqaga» ro‘yxatni o‘sha xabarning o‘zida, **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova rasmi qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
 
 ```
 [ video ]
@@ -252,7 +251,9 @@ Mijoz ko‘radigan asosiy matnlarni admin bot ichida o‘zi yozadi — dasturchi
 Bot mobil ilovadek ishlaydi: chatda bir vaqtda faqat bitta faol bot xabari turadi.
 
 - Faqat inline tugmalar. Pastki klaviatura ishlatilmaydi.
-- Ekrandan ekranga o‘tish — faol xabarni tahrirlash. Ro‘yxatdan videoga o‘tishda va qaytishda eski xabar o‘chiriladi, yangisi yuboriladi.
+- Ekrandan ekranga o‘tish — faol xabarni tahrirlash, jumladan ro‘yxatdan videoga o‘tish va qaytish ham: bitta kartochka, eski xabar o‘chirilmaydi.
+- Xabarda rasm yoki video paydo bo‘lgach, matnli ekranlar rasm ostida (caption) chiqadi. Rasm — salomlashuv rasmi, u qo‘yilmagan bo‘lsa — standart muqova (`assets/cover.png`). Rasm turgan bo‘lsa, faqat matn va tugmalar almashadi.
+- Yangi xabar faqat Telegram tahrirlashga yo‘l qo‘ymaganda yuboriladi: xabar 48 soatdan eski, matn rasm ostiga sig‘maydi (1024 belgidan uzun), yoki admin matnni mijoz ko‘radigandek rasmsiz ko‘rishi kerak.
 - Faol xabar id si bazada saqlanadi (`users.last_message_id`) — /start yoki matn kelganda eskisini topib o‘chirish uchun.
 - Bot 48 soatdan eski xabarni o‘chira olmaydi — bunday holda xato chiqmaydi, shunchaki yangi xabar yuboriladi.
 - Mijoz yuborgan xabarlar o‘chiriladi, chat toza qoladi.

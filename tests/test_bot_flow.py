@@ -29,8 +29,7 @@ from tests.conftest import ADMIN_ID, CHANNEL_ID, CLIENT_ID, Harness, file_id_of
 
 def last_text(harness: Harness) -> str:
     """Text of the last screen the bot sent or edited."""
-    method = harness.telegram.of(SendMessage, EditMessageText)[-1]
-    return method.text
+    return harness.telegram.last_screen_text()
 
 
 def button_texts(method: SendMessage | EditMessageText | SendVideo | EditMessageMedia) -> list[str]:
@@ -131,17 +130,19 @@ async def test_admin_builds_the_catalog(harness: Harness) -> None:
     await harness.press(ADMIN_ID, AdminFlowCb(action="caption"))
     assert "Qisqa tavsif yozing" in last_text(harness)
 
+    # The preview appears in the same message as the dialog.
+    dialog_id = await harness.active_message(ADMIN_ID)
     telegram.reset()
     await harness.send_text(ADMIN_ID, "USB kabel bilan")
-    preview = telegram.of(SendVideo)[-1]
-    assert preview.video == file_id_of("v1")
-    assert preview.caption == "<b>Printerni ulash</b>\nUSB kabel bilan"
-    preview_id = await harness.active_message(ADMIN_ID)
+    preview = telegram.of(EditMessageMedia)[-1]
+    assert (preview.message_id, preview.media.media) == (dialog_id, file_id_of("v1"))
+    assert preview.media.caption == "<b>Printerni ulash</b>\nUSB kabel bilan"
 
     telegram.reset()
     await harness.press(ADMIN_ID, AdminFlowCb(action="save"))
-    assert telegram.of(SendMessage)[-1].text == "✅ Video saqlandi: «Printerni ulash»\nKassa › Sozlash"
-    assert telegram.of(DeleteMessage)[-1].message_id == preview_id
+    assert last_text(harness) == "✅ Video saqlandi: «Printerni ulash»\nKassa › Sozlash"
+    assert telegram.of(DeleteMessage) == []
+    assert await harness.active_message(ADMIN_ID) == dialog_id
 
     async with harness.session_factory() as session:
         video = await session.scalar(select(Video))
@@ -183,17 +184,19 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     assert button_texts(telegram.of(EditMessageText)[-1]) == ["1", "2", "⬅️ Orqaga", "🏠 Bosh menyu"]
     list_id = await harness.active_message(CLIENT_ID)
 
+    # The video opens inside the list message: nothing is sent or deleted.
     telegram.reset()
     await harness.press(CLIENT_ID, VideoCb(id=ids["a"]))
-    assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "SendVideo", "DeleteMessage"]
-    video_message = telegram.of(SendVideo)[-1]
-    assert video_message.caption == "<b>Printer</b>"
+    assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "EditMessageMedia"]
+    video_message = telegram.of(EditMessageMedia)[-1]
+    assert (video_message.message_id, video_message.media.media) == (list_id, file_id_of("a"))
+    assert video_message.media.caption == "<b>Printer</b>"
     assert button_texts(video_message) == ["Keyingi ▶️", "⬅️ Orqaga", "🏠 Bosh menyu"]
 
-    # A second tap on the list that was just replaced does not send another video.
+    # A second tap on the same button does not send another video.
     telegram.reset()
     await harness.press(CLIENT_ID, VideoCb(id=ids["a"]), message_id=list_id)
-    assert telegram.of(SendVideo) == []
+    assert telegram.of(SendVideo, SendMessage, DeleteMessage) == []
 
     telegram.reset()
     await harness.press(CLIENT_ID, VideoCb(id=ids["b"]))
@@ -201,9 +204,19 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     assert switched.media.media == file_id_of("b")
     assert button_texts(switched) == ["◀️ Oldingi", "⬅️ Orqaga", "🏠 Bosh menyu"]
 
+    # Back to the list: the video gives way to the cover photo with the list under it.
     telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=ids["sozlash"]))
-    assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "SendMessage", "DeleteMessage"]
+    assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "EditMessageMedia"]
+    back = telegram.of(EditMessageMedia)[-1]
+    assert (back.message_id, back.media.type) == (list_id, "photo")
+    assert back.media.caption == "<b>Kassa › Sozlash</b>\n\n1. Printer\n2. Skaner"
+
+    # Further screens only change the caption under the photo.
+    telegram.reset()
+    await harness.press(CLIENT_ID, MenuCb())
+    assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "EditMessageCaption"]
+    assert await harness.active_message(CLIENT_ID) == list_id
 
     # Typing anything removes the message and brings the main menu back.
     telegram.reset()
@@ -249,7 +262,7 @@ async def test_buttons_of_deleted_items(harness: Harness) -> None:
     harness.telegram.reset()
     await harness.press(CLIENT_ID, VideoCb(id=ids["b"]))
     assert toasts(harness) == ["Bu video o‘chirilgan"]
-    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["Ombor"]
+    assert button_texts(harness.telegram.of(EditMessageMedia)[-1]) == ["Ombor"]
 
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=ids["kassa"]))

@@ -1,7 +1,7 @@
 """A photo on the greeting: set, changed, removed, and shown to clients."""
 
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.methods import DeleteMessage, EditMessageMedia, EditMessageText, SendMessage, SendPhoto
+from aiogram.methods import DeleteMessage, EditMessageMedia, SendMessage, SendPhoto
 from aiogram.types import MessageEntity
 
 from bot.services.catalog import add_video, create_category
@@ -10,7 +10,7 @@ from tests.conftest import ADMIN_ID, CLIENT_ID, Harness, file_id_of
 
 
 def last_text(harness: Harness) -> str:
-    return harness.telegram.of(SendMessage, EditMessageText)[-1].text
+    return harness.telegram.last_screen_text()
 
 
 def last_buttons(harness: Harness) -> list[str]:
@@ -57,9 +57,13 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     bold = [MessageEntity(type="bold", offset=0, length=5)]
     await harness.send_photo(ADMIN_ID, "logo", caption="Salom! CLOPOS darslari", caption_entities=bold)
 
-    # The admin sees the result as a photo, with the photo buttons now.
-    preview = harness.telegram.of(SendPhoto)[-1]
-    assert (preview.photo, preview.caption) == (file_id_of("logo"), "<b>Salom</b>! CLOPOS darslari")
+    # The admin sees the result as a photo, in the same message, with the photo buttons now.
+    preview = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (preview.type, preview.media, preview.caption) == (
+        "photo",
+        file_id_of("logo"),
+        "<b>Salom</b>! CLOPOS darslari",
+    )
     assert last_buttons(harness) == [
         "✏️ Matnni o‘zgartirish",
         "🖼 Rasmni almashtirish",
@@ -93,10 +97,12 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     menu = harness.telegram.of(SendPhoto)[-1]
     assert (menu.photo, menu.caption) == (file_id_of("logo2"), "Yangi salom")
 
-    # Removing the photo keeps the text.
+    # Removing the photo keeps the text. The preview shows it exactly, without the old photo.
     await open_greeting(harness)
+    harness.telegram.reset()
     await harness.press(ADMIN_ID, AdminTextResetCb(key="main_menu", photo=True))
     assert last_text(harness).startswith("🗑 «Salomlashuv (bosh menyu)» rasmi olib tashlandi.")
+    assert call_names(harness) == ["AnswerCallbackQuery", "SendMessage", "DeleteMessage"]
     harness.telegram.reset()
     await harness.send_text(CLIENT_ID, "/start")
     assert harness.telegram.of(SendPhoto) == []
@@ -111,10 +117,18 @@ async def test_photo_greeting_while_walking_the_catalog(harness: Harness) -> Non
 
     await harness.send_text(CLIENT_ID, "/start")
 
-    # Photo -> text list: a new message, the photo is deleted.
+    # Photo -> text list: the photo stays, the list goes into its caption.
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
-    assert call_names(harness) == ["AnswerCallbackQuery", "SendMessage", "DeleteMessage"]
+    assert call_names(harness) == ["AnswerCallbackQuery", "EditMessageCaption"]
+    assert last_text(harness) == "<b>Finance</b>\n\n1. Reports"
+
+    # Video -> list: the greeting photo comes back in place of the video, with the list under it.
+    await harness.press(CLIENT_ID, VideoCb(id=video_id))
+    harness.telegram.reset()
+    await harness.press(CLIENT_ID, CategoryCb(id=section_id))
+    back = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (back.type, back.media, back.caption) == ("photo", file_id_of("logo"), "<b>Finance</b>\n\n1. Reports")
 
     # Video -> main menu: the photo replaces the video inside the same message.
     await harness.press(CLIENT_ID, VideoCb(id=video_id))
@@ -122,7 +136,7 @@ async def test_photo_greeting_while_walking_the_catalog(harness: Harness) -> Non
     await harness.press(CLIENT_ID, MenuCb())
     swap = harness.telegram.of(EditMessageMedia)[-1]
     assert (swap.media.type, swap.media.media, swap.media.caption) == ("photo", file_id_of("logo"), "Salom")
-    assert harness.telegram.of(DeleteMessage) == []
+    assert harness.telegram.of(DeleteMessage, SendMessage, SendPhoto) == []
 
 
 async def test_menu_still_works_when_the_photo_cannot_be_sent(harness: Harness) -> None:

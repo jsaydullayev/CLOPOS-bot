@@ -1,18 +1,29 @@
-"""Keeps exactly one active bot message per chat.
+"""Keeps exactly one active bot message per chat, and every screen is shown in it.
 
-Moving between screens edits that message. When the screen type changes
-(a text list <-> a video or the greeting photo), the new message is sent first
-and the old one is deleted, as the TZ requires (sections 4.5 and 6).
+Moving between screens edits that one message, whatever the screens hold:
+a text list becomes a video in place (Telegram can add media to a text message),
+and a video becomes a photo with the list as its caption. A message with media
+cannot turn back into plain text, so a text screen on it goes under a cover photo:
+the greeting photo, or assets/cover.png when the admin has not set one. Only when
+Telegram cannot edit (a message older than 48 hours, a text too long for a caption)
+is a new message sent and the old one deleted.
 """
 
+import html
 import logging
+import re
 import time
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
+from dataclasses import dataclass
+from pathlib import Path
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import (
+    FSInputFile,
+    InlineKeyboardMarkup,
     InputMediaAnimation,
     InputMediaPhoto,
     InputMediaVideo,
@@ -20,13 +31,18 @@ from aiogram.types import (
     Message,
 )
 
-from bot.db.models import MEDIA_ANIMATION, MEDIA_PHOTO, User
+from bot.db.models import MEDIA_ANIMATION, MEDIA_PHOTO, MEDIA_VIDEO, User
+from bot.services.content import Photo
 from bot.ui.screen import Media, Screen
 
 logger = logging.getLogger(__name__)
 
 # A second tap on a message that was just replaced is a double click, not a request.
 REPLACED_TTL = 10.0
+# Telegram's limit for a photo or video caption.
+CAPTION_MAX = 1024
+DEFAULT_COVER = Path(__file__).resolve().parents[2] / "assets" / "cover.png"
+_TAG = re.compile(r"<[^>]+>")
 
 
 class ReplacedRegistry:
@@ -55,17 +71,39 @@ class ReplacedRegistry:
             del self._replaced[chat_id]
 
 
-def media_unique_id(message: MaybeInaccessibleMessageUnion | None) -> str | None:
-    photos = getattr(message, "photo", None)
-    media = getattr(message, "video", None) or getattr(message, "animation", None) or (photos[-1] if photos else None)
-    return media.file_unique_id if media is not None else None
+@dataclass(frozen=True, slots=True)
+class Shown:
+    """What a bot message holds now: text (media_type None), a photo, a video or an animation."""
+
+    media_type: str | None = None
+    unique_id: str | None = None
+
+
+def shown_in(message: MaybeInaccessibleMessageUnion) -> Shown:
+    if getattr(message, "video", None) is not None:
+        return Shown(MEDIA_VIDEO, message.video.file_unique_id)
+    if getattr(message, "animation", None) is not None:
+        return Shown(MEDIA_ANIMATION, message.animation.file_unique_id)
+    if getattr(message, "photo", None):
+        return Shown(MEDIA_PHOTO, message.photo[-1].file_unique_id)
+    return Shown()
 
 
 class Display:
-    def __init__(self, bot: Bot, registry: ReplacedRegistry, *, protect_content: bool = False) -> None:
+    def __init__(
+        self,
+        bot: Bot,
+        registry: ReplacedRegistry,
+        *,
+        protect_content: bool = False,
+        cover: Callable[[], Awaitable[Photo | None]] | None = None,
+    ) -> None:
+        """cover: loads the photo text screens go under once the message holds a video."""
         self.bot = bot
         self.registry = registry
         self.protect_content = protect_content
+        self._load_cover = cover
+        self._default_cover_id: str | None = None  # file_id of assets/cover.png once uploaded
 
     async def show(
         self,
@@ -85,15 +123,8 @@ class Display:
         target = source.message_id if source is not None else (previous if edit else None)
 
         message_id: int | None = None
-        current_unique_id = media_unique_id(source)
-        if source is None:
-            # The type of the previous message is unknown. Editing text fails cleanly on a
-            # video message, so it is safe to try; a video always goes out as a new message.
-            same_type = not screen.is_media
-        else:
-            same_type = (current_unique_id is not None) == screen.is_media
-        if target is not None and same_type:
-            message_id = await self._edit(chat_id, target, screen, current_unique_id)
+        if target is not None:
+            message_id = await self._edit(chat_id, target, screen, shown_in(source) if source is not None else None)
         if message_id is None:
             message_id = (await self._send(chat_id, screen)).message_id
             if target is not None:
@@ -109,34 +140,84 @@ class Display:
         with suppress(TelegramAPIError):
             await self.bot.delete_message(chat_id=chat_id, message_id=message_id)
 
-    async def _edit(self, chat_id: int, message_id: int, screen: Screen, current_unique_id: str | None) -> int | None:
+    async def _edit(self, chat_id: int, message_id: int, screen: Screen, shown: Shown | None) -> int | None:
+        """Turn the message into the screen. None when Telegram cannot; shown None: what it holds is unknown."""
         try:
-            if screen.media is None:
-                await self.bot.edit_message_text(
-                    chat_id=chat_id, message_id=message_id, text=screen.text, reply_markup=screen.markup
-                )
-            elif current_unique_id is not None and current_unique_id == screen.media.file_unique_id:
-                # Same video or photo: only the caption and buttons change.
-                await self.bot.edit_message_caption(
-                    chat_id=chat_id, message_id=message_id, caption=screen.media.caption, reply_markup=screen.markup
-                )
+            if screen.media is not None:
+                if shown is not None and shown.unique_id == screen.media.file_unique_id:
+                    # Same video or photo: only the caption and buttons change.
+                    await self._edit_caption(chat_id, message_id, screen.media.caption, screen.markup)
+                else:
+                    # Works on a text message too: Telegram adds the media to it.
+                    await self._edit_media(chat_id, message_id, _input_media(screen.media), screen.markup)
+                return message_id
+
+            assert screen.text is not None
+            if shown is None or shown.media_type is None:
+                try:
+                    await self.bot.edit_message_text(
+                        chat_id=chat_id, message_id=message_id, text=screen.text, reply_markup=screen.markup
+                    )
+                    return message_id
+                except TelegramBadRequest as error:
+                    # An unknown message without text holds media: the screen can still go in its caption.
+                    if shown is not None or "no text" not in error.message.lower():
+                        raise
+            if screen.plain or _caption_length(screen.text) > CAPTION_MAX:
+                return None
+            if shown is not None and shown.media_type == MEDIA_PHOTO:
+                # The photo stays (the greeting or the cover), the text goes into its caption.
+                await self._edit_caption(chat_id, message_id, screen.text, screen.markup)
             else:
-                await self.bot.edit_message_media(
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    media=_input_media(screen.media),
-                    reply_markup=screen.markup,
-                )
+                await self._edit_to_cover(chat_id, message_id, screen.text, screen.markup)
+            return message_id
         except TelegramBadRequest as error:
             if "not modified" in error.message.lower():
                 return message_id
             logger.debug("Message %s was not edited (%s), sending a new one", message_id, error.message)
             return None
-        return message_id
+
+    async def _edit_caption(
+        self, chat_id: int, message_id: int, caption: str, markup: InlineKeyboardMarkup | None
+    ) -> None:
+        await self.bot.edit_message_caption(
+            chat_id=chat_id, message_id=message_id, caption=caption, reply_markup=markup
+        )
+
+    async def _edit_media(
+        self,
+        chat_id: int,
+        message_id: int,
+        media: InputMediaVideo | InputMediaAnimation | InputMediaPhoto,
+        markup: InlineKeyboardMarkup | None,
+    ) -> Message | bool:
+        return await self.bot.edit_message_media(
+            chat_id=chat_id, message_id=message_id, media=media, reply_markup=markup
+        )
+
+    async def _edit_to_cover(
+        self, chat_id: int, message_id: int, caption: str, markup: InlineKeyboardMarkup | None
+    ) -> None:
+        """A video message cannot become text again: the text goes under the cover photo."""
+        photo = await self._load_cover() if self._load_cover is not None else None
+        if photo is not None:
+            media = InputMediaPhoto(media=photo.file_id, caption=caption, parse_mode=ParseMode.HTML)
+            await self._edit_media(chat_id, message_id, media, markup)
+            return
+        cover = self._default_cover_id or FSInputFile(DEFAULT_COVER)
+        result = await self._edit_media(
+            chat_id, message_id, InputMediaPhoto(media=cover, caption=caption, parse_mode=ParseMode.HTML), markup
+        )
+        if isinstance(result, Message) and result.photo:
+            # Uploaded once; later edits reuse Telegram's copy.
+            self._default_cover_id = result.photo[-1].file_id
 
     async def _send(self, chat_id: int, screen: Screen) -> Message:
+        # protect_content is set when a message is sent and stays through every edit.
         if screen.media is None:
-            return await self.bot.send_message(chat_id=chat_id, text=screen.text, reply_markup=screen.markup)
+            return await self.bot.send_message(
+                chat_id=chat_id, text=screen.text, reply_markup=screen.markup, protect_content=self.protect_content
+            )
         if screen.media.media_type == MEDIA_PHOTO:
             try:
                 return await self.bot.send_photo(
@@ -144,13 +225,17 @@ class Display:
                     photo=screen.media.file_id,
                     caption=screen.media.caption,
                     reply_markup=screen.markup,
+                    protect_content=self.protect_content,
                 )
             except TelegramBadRequest as error:
                 # The greeting photo is decoration: if it cannot be sent (for example its
                 # file_id belonged to a previous bot), the menu goes out without it.
                 logger.warning("Photo %s was not sent (%s), sending text only", screen.media.file_id, error.message)
                 return await self.bot.send_message(
-                    chat_id=chat_id, text=screen.media.caption, reply_markup=screen.markup
+                    chat_id=chat_id,
+                    text=screen.media.caption,
+                    reply_markup=screen.markup,
+                    protect_content=self.protect_content,
                 )
         if screen.media.media_type == MEDIA_ANIMATION:
             return await self.bot.send_animation(
@@ -167,6 +252,11 @@ class Display:
             reply_markup=screen.markup,
             protect_content=self.protect_content,
         )
+
+
+def _caption_length(text: str) -> int:
+    """Characters Telegram counts in a caption: the visible text, without the HTML tags."""
+    return len(html.unescape(_TAG.sub("", text)))
 
 
 def _input_media(media: Media) -> InputMediaVideo | InputMediaAnimation | InputMediaPhoto:

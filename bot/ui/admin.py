@@ -222,7 +222,7 @@ def text_preview(
         )
         return Screen(media=media, markup=keyboard(rows))
     body = t("text_preview_title", label=html(label)) + "\n\n" + text
-    return Screen(text=f"{notice}\n\n{body}" if notice else body, markup=keyboard(rows))
+    return Screen(text=f"{notice}\n\n{body}" if notice else body, markup=keyboard(rows), plain=True)
 
 
 def text_edit_prompt(label: str, *, photo: bool, error: str | None = None) -> Screen:

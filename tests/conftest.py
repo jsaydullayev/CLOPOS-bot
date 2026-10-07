@@ -9,9 +9,12 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.base import BaseSession
 from aiogram.enums import ChatType, ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import (
     DeleteMessage,
+    EditMessageCaption,
     EditMessageMedia,
+    EditMessageText,
     ForwardMessage,
     SendAnimation,
     SendDocument,
@@ -20,7 +23,7 @@ from aiogram.methods import (
     SendVideo,
     TelegramMethod,
 )
-from aiogram.types import CallbackQuery, Chat, Dice, Document, Message, MessageEntity, PhotoSize, Update
+from aiogram.types import Animation, CallbackQuery, Chat, Dice, Document, Message, MessageEntity, PhotoSize, Update
 from aiogram.types import User as TgUser
 from aiogram.types import Video as TgVideo
 from sqlalchemy import select
@@ -35,6 +38,7 @@ ADMIN_ID = 1
 CLIENT_ID = 2
 CHANNEL_ID = -1001000
 BOT_TOKEN = "42:TEST"
+COVER_FILE_ID = "file-cover"
 
 
 def file_id_of(unique_id: str) -> str:
@@ -47,7 +51,7 @@ class FakeTelegram(BaseSession):
     def __init__(self) -> None:
         super().__init__()
         self.calls: list[TelegramMethod[Any]] = []
-        self.media: dict[int, str] = {}  # message id -> file_id of the video in it
+        self.media: dict[int, tuple[str, str]] = {}  # message id -> (media type, file_id) shown in it
         self.forwarded: dict[int, TgVideo] = {}  # archive post id -> video returned by ForwardMessage
         self._errors: list[tuple[type, Exception]] = []
         self._message_ids = count(1000)
@@ -65,6 +69,19 @@ class FakeTelegram(BaseSession):
     def reset(self) -> None:
         self.calls.clear()
 
+    def screens(self) -> list[Any]:
+        """Calls that showed a screen to a user: a sent or edited message, its text or caption."""
+        return self.of(SendMessage, EditMessageText, EditMessageCaption, EditMessageMedia, SendPhoto)
+
+    def last_screen_text(self) -> str:
+        """The text of the last screen: a message text or the caption under its photo or video."""
+        method = self.screens()[-1]
+        if isinstance(method, (SendMessage, EditMessageText)):
+            return method.text
+        if isinstance(method, EditMessageMedia):
+            return method.media.caption
+        return method.caption
+
     async def close(self) -> None:
         return None
 
@@ -78,17 +95,19 @@ class FakeTelegram(BaseSession):
             if isinstance(method, method_type):
                 del self._errors[index]
                 raise error
+        if isinstance(method, EditMessageText) and method.message_id in self.media:
+            raise TelegramBadRequest(method=method, message="Bad Request: there is no text in the message to edit")
 
         if isinstance(method, (SendMessage, SendVideo, SendAnimation, SendPhoto, SendDocument, ForwardMessage)):
             message_id = next(self._message_ids)
             chat_type = ChatType.PRIVATE if method.chat_id > 0 else ChatType.CHANNEL
             video = None
             if isinstance(method, SendVideo):
-                self.media[message_id] = method.video
+                self.media[message_id] = ("video", method.video)
             elif isinstance(method, SendAnimation):
-                self.media[message_id] = method.animation
+                self.media[message_id] = ("animation", method.animation)
             elif isinstance(method, SendPhoto):
-                self.media[message_id] = method.photo
+                self.media[message_id] = ("photo", method.photo)
             elif isinstance(method, ForwardMessage):
                 video = self.forwarded.get(method.message_id)
             return Message(
@@ -98,7 +117,9 @@ class FakeTelegram(BaseSession):
                 video=video,
             )
         if isinstance(method, EditMessageMedia):
-            self.media[method.message_id] = method.media.media
+            # An uploaded file (the default cover) has no file_id yet.
+            file = method.media.media
+            self.media[method.message_id] = (method.media.type, file if isinstance(file, str) else COVER_FILE_ID)
         if isinstance(method, DeleteMessage):
             self.media.pop(method.message_id, None)
         return True
@@ -258,18 +279,28 @@ class Harness:
         """Tap a button on a bot message (by default the user's active message)."""
         if message_id is None:
             message_id = await self.active_message(user_id)
-        file_id = self.telegram.media.get(message_id)
-        video = None
-        if file_id is not None:
+        content: dict[str, Any] = {"text": "..."}
+        if message_id in self.telegram.media:
+            media_type, file_id = self.telegram.media[message_id]
             unique_id = file_id.removeprefix("file-")
-            video = TgVideo(file_id=file_id, file_unique_id=unique_id, width=1, height=1, duration=1)
+            if media_type == "photo":
+                content = {"photo": [PhotoSize(file_id=file_id, file_unique_id=unique_id, width=1, height=1)]}
+            elif media_type == "animation":
+                content = {
+                    "animation": Animation(
+                        file_id=file_id, file_unique_id=unique_id, width=1, height=1, duration=1
+                    )
+                }
+            else:
+                content = {
+                    "video": TgVideo(file_id=file_id, file_unique_id=unique_id, width=1, height=1, duration=1)
+                }
         message = Message(
             message_id=message_id,
             date=datetime.now(UTC),
             chat=Chat(id=user_id, type=ChatType.PRIVATE),
             from_user=TgUser(id=42, is_bot=True, first_name="Bot"),
-            text=None if video else "...",
-            video=video,
+            **content,
         )
         callback = CallbackQuery(
             id=str(next(self._callback_ids)),

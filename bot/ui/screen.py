@@ -33,6 +33,10 @@ class Screen:
     text: str | None = None
     media: Media | None = None
     markup: InlineKeyboardMarkup | None = None
+    # A text screen is usually shown under a photo when the message holds one. A plain screen must
+    # look exactly as written (the admin's preview of a text clients see without a photo), even if
+    # that takes a new message.
+    plain: bool = False
 
     def __post_init__(self) -> None:
         if (self.text is None) == (self.media is None):
