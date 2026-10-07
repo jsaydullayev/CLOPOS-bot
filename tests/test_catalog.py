@@ -50,6 +50,12 @@ async def test_category_names_are_cleaned_and_checked(session: AsyncSession) -> 
         await new_category(session, "KASSA")
     assert error.value.key == "error_category_exists"
 
+    # Names that would be the same section in a channel caption are the same name.
+    await new_category(session, "O‘quv kurslar")
+    with pytest.raises(CatalogError) as error:
+        await new_category(session, "Oʻquv-kurslar")
+    assert (error.value.key, error.value.params) == ("error_category_exists", {"title": "O‘quv kurslar"})
+
 
 async def test_same_name_is_allowed_in_different_parents(session: AsyncSession) -> None:
     kassa = await new_category(session, "Kassa")

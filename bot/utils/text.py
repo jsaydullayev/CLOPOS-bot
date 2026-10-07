@@ -22,6 +22,9 @@ _EMOJI_RANGES: tuple[tuple[int, int], ...] = (
     (0xE0020, 0xE007F),  # tag characters
 )
 _WHITESPACE = re.compile(r"\s+")
+# For name_key: Cyrillic letters that look like Latin ones become Latin, so a name typed with a letter
+# from the other alphabet still matches; the Uzbek apostrophes ʻ ʼ count as letters in Unicode, so they go.
+_KEY_LETTERS = str.maketrans("аеёкмнорстухв", "aeekmhopctyxb", "ʻʼʹ")
 
 
 def _is_emoji(char: str) -> bool:
@@ -37,6 +40,27 @@ def clean_name(raw: str) -> str:
             continue
         kept.append(" " if unicodedata.category(char) in ("Cc", "Cf") else char)
     return _WHITESPACE.sub(" ", "".join(kept)).strip()
+
+
+def name_key(name: str) -> str:
+    """A section name reduced for comparing: letter case, spaces, apostrophes (o‘ o' oʻ)
+    and other punctuation do not matter, nor do Cyrillic letters that look like Latin ones."""
+    folded = unicodedata.normalize("NFKC", name).casefold().translate(_KEY_LETTERS)
+    return "".join(char for char in folded if char.isalnum()) or folded.strip()
+
+
+def typo_distance(first: str, second: str) -> int:
+    """Letters to add, remove, replace or swap with a neighbour to turn one string into the other."""
+    before_previous: list[int] = []
+    previous = list(range(len(second) + 1))
+    for i, char in enumerate(first, start=1):
+        current = [i] + [0] * len(second)
+        for j, other in enumerate(second, start=1):
+            current[j] = min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (char != other))
+            if i > 1 and j > 1 and char == second[j - 2] and first[i - 2] == other:
+                current[j] = min(current[j], before_previous[j - 2] + 1)
+        before_previous, previous = previous, current
+    return previous[-1]
 
 
 def first_line(text: str | None) -> str:

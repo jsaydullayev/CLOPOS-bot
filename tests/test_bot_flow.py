@@ -163,7 +163,7 @@ async def test_admin_builds_the_catalog(harness: Harness) -> None:
     await harness.send_video(ADMIN_ID, "v1")
     assert "Bu video allaqachon bor: «Printerni ulash»" in last_text(harness)
     await harness.press(ADMIN_ID, AdminFlowCb(action="cancel"))
-    assert last_text(harness).startswith("<b>Kassa › Sozlash</b>\n1 ta video")
+    assert last_text(harness) == "<b>Kassa › Sozlash</b>\n\n1. Printerni ulash"
 
 
 async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
@@ -179,7 +179,7 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     assert button_texts(telegram.of(EditMessageText)[-1]) == ["Sozlash", "⬅️ Orqaga"]
 
     await harness.press(CLIENT_ID, CategoryCb(id=ids["sozlash"]))
-    assert last_text(harness) == "<b>Kassa › Sozlash</b>\n2 ta video\n\n1. Printer\n2. Skaner"
+    assert last_text(harness) == "<b>Kassa › Sozlash</b>\n\n1. Printer\n2. Skaner"
     assert button_texts(telegram.of(EditMessageText)[-1]) == ["1", "2", "⬅️ Orqaga", "🏠 Bosh menyu"]
     list_id = await harness.active_message(CLIENT_ID)
 

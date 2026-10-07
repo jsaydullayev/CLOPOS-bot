@@ -5,6 +5,7 @@ from aiogram.filters.callback_data import CallbackData
 
 NOOP = "x"
 ADMIN_PANEL = "ap"
+CHANNEL_GUIDE = "ag"
 
 
 class MenuCb(CallbackData, prefix="m"):
@@ -77,6 +78,12 @@ class AdminIntroCb(CallbackData, prefix="ai"):
 
     id: int
     clear: bool = False
+
+
+class SectionCodesCb(CallbackData, prefix="ao"):
+    """Section codes for channel captions."""
+
+    page: int = 0
 
 
 class AdminFlowCb(CallbackData, prefix="af"):

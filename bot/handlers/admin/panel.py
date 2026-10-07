@@ -8,8 +8,8 @@ from bot.db import repo
 from bot.db.models import User
 from bot.handlers.common import answer
 from bot.texts import t
-from bot.ui.admin import admin_panel, admin_pick
-from bot.ui.callbacks import ADMIN_PANEL, AdminPickCb
+from bot.ui.admin import admin_panel, admin_pick, channel_guide, section_codes
+from bot.ui.callbacks import ADMIN_PANEL, CHANNEL_GUIDE, AdminPickCb, SectionCodesCb
 from bot.ui.display import Display
 
 
@@ -45,9 +45,31 @@ async def pick_category(
     await display.show(db_user, admin_pick(tree, category_id, page), source=callback.message)
 
 
+async def open_channel_guide(callback: CallbackQuery, state: FSMContext, db_user: User, display: Display) -> None:
+    await state.clear()
+    await answer(callback)
+    await display.show(db_user, channel_guide(), source=callback.message)
+
+
+async def open_section_codes(
+    callback: CallbackQuery,
+    callback_data: SectionCodesCb,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
+) -> None:
+    await state.clear()
+    await answer(callback)
+    tree = await repo.load_tree(session)
+    await display.show(db_user, section_codes(tree, callback_data.page), source=callback.message)
+
+
 def create_router() -> Router:
     router = Router(name="admin-panel")
     router.message.register(panel_command, Command("admin"))
     router.callback_query.register(open_panel, F.data == ADMIN_PANEL)
     router.callback_query.register(pick_category, AdminPickCb.filter())
+    router.callback_query.register(open_channel_guide, F.data == CHANNEL_GUIDE)
+    router.callback_query.register(open_section_codes, SectionCodesCb.filter())
     return router

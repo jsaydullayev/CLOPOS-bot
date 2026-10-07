@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.db import repo
 from bot.db.models import Category, Video
 from bot.services.tree import CategoryNode, Kind
-from bot.utils.text import clean_name
+from bot.utils.text import clean_name, name_key
 
 NAME_MIN = 2
 CATEGORY_NAME_MAX = 40
@@ -62,9 +62,11 @@ async def create_category(
             raise CatalogError("error_max_depth", max=max_depth)
         depth = parent.depth + 1
 
-    folded = title.casefold()
-    if any(sibling.title.casefold() == folded for sibling in tree.children(parent_id)):
-        raise CatalogError("error_category_exists", title=title)
+    # Names that differ only in case, spaces or apostrophes would be the same section in channel captions.
+    key = name_key(title)
+    same = next((sibling for sibling in tree.children(parent_id) if name_key(sibling.title) == key), None)
+    if same is not None:
+        raise CatalogError("error_category_exists", title=same.title)
 
     category = Category(
         parent_id=parent_id,

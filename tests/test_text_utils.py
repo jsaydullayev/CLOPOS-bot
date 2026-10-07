@@ -1,4 +1,4 @@
-from bot.utils.text import clean_name, first_line, format_path, html
+from bot.utils.text import clean_name, first_line, format_path, html, name_key, typo_distance
 
 
 def test_clean_name_drops_emoji_and_extra_spaces() -> None:
@@ -30,6 +30,22 @@ def test_format_path_cuts_the_beginning_of_long_paths() -> None:
     assert len(path) <= 60
     assert path.startswith("… › ")
     assert path.endswith("Uchinchi › To‘rtinchi")
+
+
+def test_name_key_ignores_case_spaces_apostrophes_and_lookalike_letters() -> None:
+    assert name_key("O‘quv  qo'llanma") == name_key("oʻquv qoʻllanma") == name_key("OQUV-QOLLANMA") == "oquvqollanma"
+    assert name_key("Kassa") == name_key("Kаssа")  # Cyrillic а
+    assert name_key("Ёлка") == name_key("елка")
+    assert name_key("1-dars") != name_key("2-dars")
+
+
+def test_typo_distance_counts_added_removed_replaced_and_swapped_letters() -> None:
+    assert typo_distance("finans", "finans") == 0
+    assert typo_distance("finas", "finans") == 1
+    assert typo_distance("finanss", "finans") == 1
+    assert typo_distance("fimans", "finans") == 1
+    assert typo_distance("fianns", "finans") == 1  # neighbours swapped
+    assert typo_distance("kassa", "ombor") == 5
 
 
 def test_html_escapes_markup() -> None:

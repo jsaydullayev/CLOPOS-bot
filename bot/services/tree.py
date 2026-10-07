@@ -54,6 +54,16 @@ class CatalogTree:
     def children(self, parent_id: int | None) -> list[CategoryNode]:
         return list(self._children.get(parent_id, ()))
 
+    def walk(self) -> list[CategoryNode]:
+        """All categories depth-first: each one followed by its children, in their order."""
+        order: list[CategoryNode] = []
+        stack = self.children(None)[::-1]
+        while stack:
+            node = stack.pop()
+            order.append(node)
+            stack.extend(self.children(node.id)[::-1])
+        return order
+
     def visible_children(self, parent_id: int | None) -> list[CategoryNode]:
         """Children that have at least one video somewhere inside."""
         return [node for node in self.children(parent_id) if self.total(node.id) > 0]

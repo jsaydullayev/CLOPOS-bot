@@ -1,7 +1,7 @@
 """Videos added by posting them in the private video channel."""
 
 import pytest
-from aiogram.methods import SendMessage, SendVideo, SetMessageReaction
+from aiogram.methods import EditMessageText, SendMessage, SendVideo, SetMessageReaction
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from bot.db import repo
 from bot.db.models import Category, Video
 from bot.services.catalog import CatalogError, add_video, create_category
 from bot.services.channel import PostMedia, import_post, parse_caption, post_caption
+from bot.ui.callbacks import CHANNEL_GUIDE, SectionCodesCb
 from tests.conftest import ADMIN_ID, CHANNEL_ID, Harness, file_id_of
 
 
@@ -62,6 +63,14 @@ def test_bad_captions(caption: str | None, key: str) -> None:
     assert error.value.key == key
 
 
+def test_caption_with_a_code_and_new_sections() -> None:
+    parsed = parse_caption("#12 › +Ombor › Qoldiq\nVideo")
+    assert (parsed.code, parsed.path, parsed.new_from) == (12, ("Ombor", "Qoldiq"), 0)
+    assert parse_caption("#7\nVideo").path == ()
+    assert parse_caption("Kassa › + Smena\nVideo").new_from == 1
+    assert parse_caption("Kassa › Smena\nVideo").new_from is None
+
+
 def test_the_bot_writes_captions_it_can_read_back() -> None:
     caption = post_caption(["Бек офис", "Финансы"], "Отчёты", "Tavsif")
     assert caption == "Бек офис › Финансы\nОтчёты\nTavsif"
@@ -71,8 +80,8 @@ def test_the_bot_writes_captions_it_can_read_back() -> None:
 # ── adding and updating ────────────────────────────────────────
 
 
-async def test_post_creates_missing_sections_and_the_video(session: AsyncSession) -> None:
-    result = await import_(session, 10, "Бек офис › Финансы\nОтчёты", "a")
+async def test_post_creates_sections_marked_with_a_plus_and_the_video(session: AsyncSession) -> None:
+    result = await import_(session, 10, "+Бек офис › Финансы\nОтчёты", "a")
     assert result.created
     assert result.new_sections == ["Бек офис", "Бек офис › Финансы"]
     assert (result.video.title, result.video.backup_message_id) == ("Отчёты", 10)
@@ -86,7 +95,7 @@ async def test_post_creates_missing_sections_and_the_video(session: AsyncSession
 
 
 async def test_rejected_post_leaves_nothing_behind(session: AsyncSession) -> None:
-    await import_(session, 10, "Финансы\nОтчёты", "a")  # Финансы now holds videos
+    await import_(session, 10, "+Финансы\nОтчёты", "a")  # Финансы now holds videos
     await session.commit()
     with pytest.raises(CatalogError) as error:
         await import_(session, 11, "Финансы › Касса › Смена\nОткрытие", "b")
@@ -98,7 +107,7 @@ async def test_rejected_post_leaves_nothing_behind(session: AsyncSession) -> Non
 
 
 async def test_video_cannot_go_into_a_section_with_sections(session: AsyncSession) -> None:
-    await import_(session, 10, "Бек офис › Финансы\nОтчёты", "a")
+    await import_(session, 10, "+Бек офис › Финансы\nОтчёты", "a")
     with pytest.raises(CatalogError) as error:
         await import_(session, 11, "Бек офис\nКасса", "b")
     assert (error.value.key, error.value.params) == ("channel_section_has_children", {"title": "Бек офис"})
@@ -109,16 +118,16 @@ async def test_depth_limit_and_duplicates(session: AsyncSession) -> None:
         await import_(session, 10, "A1 › B1 › C1 › D1\nVideo", "a", max_depth=3)
     assert error.value.key == "error_max_depth"
 
-    await import_(session, 11, "Финансы\nОтчёты", "same")
+    await import_(session, 11, "+Финансы\nОтчёты", "same")
     with pytest.raises(CatalogError) as error:
-        await import_(session, 12, "Касса\nОтчёты 2", "same")
+        await import_(session, 12, "+Касса\nОтчёты 2", "same")
     assert error.value.key == "channel_duplicate"
     assert error.value.params == {"title": "Отчёты", "path": "Финансы"}
 
 
 async def test_edited_post_updates_and_moves_the_video(session: AsyncSession) -> None:
-    first = await import_(session, 10, "Финансы\nОтчёты", "a")
-    await import_(session, 11, "Касса\nСмена", "b")
+    first = await import_(session, 10, "+Финансы\nОтчёты", "a")
+    await import_(session, 11, "+Касса\nСмена", "b")
     video_id = first.video.id
 
     edited = await import_(session, 10, "Касса\nОтчёты за день\nTavsif", "a")
@@ -137,6 +146,85 @@ async def test_section_names_cannot_contain_separators(session: AsyncSession) ->
     assert error.value.key == "error_name_separator"
 
 
+# ── finding the right section ──────────────────────────────────
+
+
+async def test_unknown_section_is_not_created_without_a_plus(session: AsyncSession) -> None:
+    await import_(session, 10, "+Videodarsliklar › Finans\nHisobot", "a")
+
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 11, "Videodarsliklar › Ombor\nQoldiq", "b")
+    assert (error.value.key, error.value.params) == ("channel_section_not_found", {"title": "Ombor"})
+
+    # Too far for a typo, but close enough to be suggested.
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 12, "Videodarsliklar › Finanslar\nQoldiq", "b")
+    assert (error.value.key, error.value.params) == (
+        "channel_section_not_found_similar",
+        {"title": "Finanslar", "options": "«Finans»"},
+    )
+    assert await count(session, Category) == 2
+
+
+async def test_small_differences_and_typos_find_the_existing_section(session: AsyncSession) -> None:
+    first = await import_(session, 10, "+O‘quv videolar › Finans\nHisobot", "a")
+    finans = first.video.category_id
+
+    # Case, spaces, apostrophes and Cyrillic look-alike letters (а, о) are not even typos.
+    same = await import_(session, 11, "oʻquv  VIDEOLAR › Finаns\nKassa", "b")
+    assert (same.video.category_id, same.corrected) == (finans, [])
+
+    # A missing, extra or swapped letter is a typo; the admins are told what it was taken for.
+    for message_id, name in [(12, "Finas"), (13, "Finanss"), (14, "Fianns")]:
+        result = await import_(session, message_id, f"O'quv videolar › {name}\nVideo {name}", name)
+        assert (result.video.category_id, result.corrected) == (finans, [(name, "Finans")])
+    assert await count(session, Category) == 2
+
+
+async def test_numbers_and_short_names_must_match_exactly(session: AsyncSession) -> None:
+    await import_(session, 10, "+Kurs › 1-dars\nKirish", "a")
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 11, "Kurs › 2-dars\nDavomi", "b")
+    assert (error.value.key, error.value.params["options"]) == ("channel_section_not_found_similar", "«1-dars»")
+
+    result = await import_(session, 12, "Kurs › +2-dars\nDavomi", "b")
+    assert result.new_sections == ["Kurs › 2-dars"]
+
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 13, "Kurz › 1-dars\nVideo", "c")  # «Kurs» has 4 letters: no typo allowed
+    assert error.value.key == "channel_section_not_found_similar"
+
+
+async def test_a_typo_equally_close_to_two_sections_is_not_guessed(session: AsyncSession) -> None:
+    await import_(session, 10, "+Ombor\nA video", "a")
+    await import_(session, 11, "+Ombar\nB video", "b")  # with a +, a near name is a new section
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 12, "Ombir\nC video", "c")
+    assert (error.value.key, error.value.params) == (
+        "channel_section_ambiguous",
+        {"title": "Ombir", "options": "«Ombor», «Ombar»"},
+    )
+
+
+async def test_a_code_puts_the_video_into_that_exact_section(session: AsyncSession) -> None:
+    first = await import_(session, 10, "+Videodarsliklar › Finans\nHisobot", "a")
+    finans = await session.get(Category, first.video.category_id)
+
+    by_code = await import_(session, 11, f"#{finans.id}\nKassa", "b")
+    assert by_code.video.category_id == finans.id
+
+    below = await import_(session, 12, f"#{finans.parent_id} › +Ombor\nQoldiq", "c")
+    assert below.new_sections == ["Videodarsliklar › Ombor"]
+
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 13, "#999\nX video", "d")
+    assert (error.value.key, error.value.params) == ("channel_unknown_code", {"code": 999})
+
+    with pytest.raises(CatalogError) as error:
+        await import_(session, 14, f"#{finans.parent_id}\nY video", "e")
+    assert error.value.key == "channel_section_has_children"
+
+
 # ── through the bot ────────────────────────────────────────────
 
 
@@ -149,7 +237,7 @@ def reactions(harness: Harness) -> list[tuple[int, str]]:
 async def test_channel_posts_through_the_bot(harness: Harness) -> None:
     telegram = harness.telegram
 
-    await harness.post_in_channel(100, unique_id="a", caption="Бек офис › Финансы\nОтчёты")
+    await harness.post_in_channel(100, unique_id="a", caption="+Бек офис › Финансы\nОтчёты")
     assert reactions(harness) == [(100, "👍")]
     notices = [call.text for call in telegram.of(SendMessage)]
     assert notices == ["ℹ️ Kanal posti bo‘yicha yangi bo‘lim yaratildi:\nБек офис\nБек офис › Финансы\n"
@@ -175,6 +263,47 @@ async def test_channel_posts_through_the_bot(harness: Harness) -> None:
     async with harness.session_factory() as session:
         titles = [video.title for video in await session.scalars(select(Video).order_by(Video.position))]
     assert titles == ["Отчёты", "Касса"]
+
+
+async def test_admins_learn_which_section_a_typo_was_taken_for(harness: Harness) -> None:
+    await harness.post_in_channel(100, unique_id="a", caption="+Videodarsliklar › Finans\nHisobot")
+    harness.telegram.reset()
+
+    await harness.post_in_channel(101, unique_id="b", caption="Videodarsliklar › Finas\nKassa")
+    assert reactions(harness) == [(101, "👍")]
+    assert [call.text for call in harness.telegram.of(SendMessage)] == [
+        "ℹ️ Kanal postidagi bo‘lim nomi tuzatildi:\n«Finas» → «Finans»\nPost: https://t.me/c/1000/101\n\n"
+        "Noto‘g‘ri tushunilgan bo‘lsa, captionni tahrirlang."
+    ]
+
+    # An unknown name without a + is turned down with the nearest names.
+    harness.telegram.reset()
+    await harness.post_in_channel(102, unique_id="c", caption="Videodarsliklar › Finanslar\nOmbor")
+    assert reactions(harness) == [(102, "👎")]
+    assert harness.telegram.of(SendMessage)[0].text.startswith(
+        "⚠️ «Finanslar» bo‘limi topilmadi. Shunga o‘xshash: «Finans».\n"
+        "Yangi bo‘lim ochish uchun nomi oldiga + qo‘ying: +Finanslar\nPost: https://t.me/c/1000/102"
+    )
+
+
+async def test_admin_panel_has_the_channel_guide_and_section_codes(harness: Harness) -> None:
+    await harness.post_in_channel(100, unique_id="a", caption="+Kassa › Smena\nOchish")
+    async with harness.session_factory() as session:
+        kassa = await session.scalar(select(Category).where(Category.title == "Kassa"))
+        smena = await session.scalar(select(Category).where(Category.title == "Smena"))
+
+    await harness.send_text(ADMIN_ID, "/admin")
+    await harness.press(ADMIN_ID, CHANNEL_GUIDE)
+    guide = harness.telegram.of(EditMessageText)[-1]
+    assert guide.text.startswith("<b>📢 Kanalga video qo‘yish</b>")
+    assert [button.text for row in guide.reply_markup.inline_keyboard for button in row] == [
+        "📋 Bo‘lim kodlari",
+        "⬅️ Admin panel",
+    ]
+
+    await harness.press(ADMIN_ID, SectionCodesCb())
+    codes = harness.telegram.of(EditMessageText)[-1].text
+    assert codes.endswith(f"<code>#{kassa.id}</code> Kassa 📂\n<code>#{smena.id}</code> Kassa › Smena")
 
 
 async def test_other_posts_are_ignored_or_explained(harness: Harness) -> None:

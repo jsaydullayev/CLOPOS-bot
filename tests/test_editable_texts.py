@@ -127,21 +127,17 @@ async def test_admin_writes_a_section_introduction(harness: Harness) -> None:
     assert "Hozirgi matn:\n— yo‘q —" in last_text(harness)
 
     await harness.send_text(ADMIN_ID, "Bu bo‘limda moliya hisobotlari haqida videolar.")
-    assert last_text(harness) == (
-        "<b>Finance</b>\nBu bo‘limda moliya hisobotlari haqida videolar.\n\n1 ta video\n\n1. Reports"
-    )
+    assert last_text(harness) == "<b>Finance</b>\nBu bo‘limda moliya hisobotlari haqida videolar.\n\n1. Reports"
 
     await harness.send_text(CLIENT_ID, "/start")
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
-    assert last_text(harness) == (
-        "<b>Finance</b>\nBu bo‘limda moliya hisobotlari haqida videolar.\n\n1 ta video\n\n1. Reports"
-    )
+    assert last_text(harness) == "<b>Finance</b>\nBu bo‘limda moliya hisobotlari haqida videolar.\n\n1. Reports"
 
     # Removing the introduction.
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id))
     assert "🗑 Matnni olib tashlash" in button_texts(harness)
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id, clear=True))
-    assert last_text(harness) == "<b>Finance</b>\n1 ta video\n\n1. Reports"
+    assert last_text(harness) == "<b>Finance</b>\n\n1. Reports"
 
 
 async def test_clients_cannot_change_texts(harness: Harness) -> None:

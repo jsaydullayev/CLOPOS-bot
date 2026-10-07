@@ -50,7 +50,6 @@ def category_screen(
     *,
     intro: str | None = None,
 ) -> Screen:
-    count_line = None
     listing = ""
     if tree.kind(node.id) is Kind.CATEGORIES:
         chunk, page, pages = paginate(tree.visible_children(node.id), page)
@@ -58,10 +57,9 @@ def category_screen(
     else:
         chunk_videos, page, pages = paginate(videos, page)
         listing, rows = video_list(chunk_videos, page * PAGE_SIZE, lambda video: VideoCb(id=video.id))
-        count_line = t("videos_count", count=len(videos))
     rows.append(page_row(page, pages, lambda p: CategoryCb(id=node.id, page=p)))
     rows.append(_bottom_row(node))
-    text = section_header(tree, node.id, intro, count_line)
+    text = section_header(tree, node.id, intro)
     if listing:
         text += "\n\n" + listing
     return Screen(text=text, markup=keyboard(rows))
@@ -82,13 +80,13 @@ def video_list(
     return "\n".join(lines), grid(buttons, NUMBER_COLUMNS)
 
 
-def section_header(tree: CatalogTree, category_id: int, intro: str | None, count_line: str | None) -> str:
-    """The section path in bold, the admin's introduction, then a count line."""
+def section_header(tree: CatalogTree, category_id: int, intro: str | None, note: str | None = None) -> str:
+    """The section path in bold, the admin's introduction, then a note (admins only)."""
     text = t("category_title", path=html(format_path(tree.path(category_id))))
     if intro:
         text += "\n" + intro
-    if count_line:
-        text += ("\n\n" if intro else "\n") + count_line
+    if note:
+        text += ("\n\n" if intro else "\n") + note
     return text
 
 

@@ -8,7 +8,6 @@
 main_menu = "Xush kelibsiz! Kerakli bo‘limni tanlang."
 main_menu_empty = "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
 category_title = "<b>{path}</b>"
-videos_count = "{count} ta video"
 # Video sonini ham ko‘rsatish uchun: "{title} · {count}"
 category_button = "{title}"
 # Videolar ro‘yxati: nomlar xabar matnida, tugmalarda faqat raqam
@@ -38,6 +37,7 @@ btn_admin_categories = "📂 Bo‘limlar"
 btn_admin_add_video = "➕ Video qo‘shish"
 btn_admin_panel = "⬅️ Admin panel"
 btn_admin_texts = "✏️ Salomlashuv va matnlar"
+btn_channel_guide = "📢 Kanal shabloni"
 btn_reset_text = "↩️ Standart holatga qaytarish"
 btn_edit_text = "✏️ Matnni o‘zgartirish"
 btn_set_photo = "🖼 Rasm qo‘yish"
@@ -120,8 +120,58 @@ error_name_separator = "⚠️ Bo‘lim nomida › va > belgilari bo‘lmasin �
 
 # ── Video kanal: postlardan video qo‘shish ───────────────────
 
-channel_post_failed = "{reason}\nPost: {link}\n\nCaption formati:\n1-qator — bo‘lim yo‘li: Bo‘lim › Ichki bo‘lim\n2-qator — video nomi\n3-qatordan — tavsif (ixtiyoriy)\n\nCaptionni tahrirlasangiz, bot postni qayta ko‘rib chiqadi."
+channel_post_failed = "{reason}\nPost: {link}\n\nCaption formati:\n1-qator — bo‘lim: #kod yoki Bo‘lim › Ichki bo‘lim (yangi bo‘lim oldida +)\n2-qator — video nomi\n3-qatordan — tavsif (ixtiyoriy)\nYo‘riqnoma: /admin → «📢 Kanal shabloni».\n\nCaptionni tahrirlasangiz, bot postni qayta ko‘rib chiqadi."
 channel_sections_created = "ℹ️ Kanal posti bo‘yicha yangi bo‘lim yaratildi:\n{sections}\nPost: {link}\n\nNom xato yozilgan bo‘lsa, postni tahrirlang va ortiqcha bo‘limni admin paneldan o‘chiring."
+channel_sections_corrected = "ℹ️ Kanal postidagi bo‘lim nomi tuzatildi:\n{changes}\nPost: {link}\n\nNoto‘g‘ri tushunilgan bo‘lsa, captionni tahrirlang."
+channel_correction = "«{written}» → «{section}»"
+channel_unknown_code = "⚠️ #{code} kodli bo‘lim yo‘q. Kodlar: /admin → «📢 Kanal shabloni» → «📋 Bo‘lim kodlari»."
+channel_section_not_found = "⚠️ «{title}» bo‘limi topilmadi. Yangi bo‘lim ochish uchun nomi oldiga + qo‘ying: +{title}"
+channel_section_not_found_similar = "⚠️ «{title}» bo‘limi topilmadi. Shunga o‘xshash: {options}.\nYangi bo‘lim ochish uchun nomi oldiga + qo‘ying: +{title}"
+channel_section_ambiguous = "⚠️ «{title}» qaysi bo‘lim ekani aniq emas: {options}. Nomni to‘liq yozing yoki bo‘lim kodini qo‘ying."
+
+# Admin paneldagi «📢 Kanal shabloni». Matnda < va > o‘rniga &lt; va &gt; yozing.
+channel_guide = """<b>📢 Kanalga video qo‘yish</b>
+
+Videoni kanalga <b>video</b> qilib (fayl emas) va <b>bittadan</b> tashlang. Caption:
+1-qator — bo‘lim, 2-qator — video nomi, 3-qatordan — tavsif (ixtiyoriy).
+Namunani bossangiz, nusxalanadi.
+
+<b>1. Mavjud bo‘limga — kod bilan (eng ishonchli)</b>
+Kodni «📋 Bo‘lim kodlari»dan oling:
+<code>#12
+Hisobot olish
+Kunlik savdo hisobotini ko‘rish</code>
+
+<b>2. Mavjud bo‘limga — nom bilan</b>
+Bo‘limlarni › yoki &gt; bilan ajrating:
+<code>Videodarsliklar › Finans
+Hisobot olish</code>
+
+<b>3. Yangi bo‘limga</b>
+Yangi bo‘lim nomi oldiga <b>+</b> qo‘ying:
+<code>Videodarsliklar › +Ombor
+Qoldiqni ko‘rish</code>
+Kod bilan: <code>#12 › +Ombor</code>
+Yangi asosiy bo‘lim: <code>+Kurslar › Boshlang‘ich</code>
++ qo‘yilgan bo‘lim va undan keyingilari topilmasa, yangi ochiladi.
+
+<b>Bot nimalarni kechiradi</b>
+• katta-kichik harf, ortiqcha bo‘sh joy, tinish belgilari
+• o‘, o', oʻ — hammasi bir xil
+• kirill va lotin o‘xshash harflari: а/a, о/o, с/c, р/p…
+• 1–2 harf xatosi: «Finas» → «Finans». Bot nimani tuzatganini adminlarga yozadi.
+Raqamlar aniq bo‘lishi kerak: «1-dars» va «2-dars» — boshqa-boshqa bo‘lim. 4 harfgacha bo‘lgan nomlar ham aniq yozilsin.
+
+<b>Xatodan himoya</b>
+• Oldida + yo‘q va topilmagan bo‘lim ochilmaydi: postga 👎 qo‘yiladi, adminlarga o‘xshash nomlar yuboriladi.
+• Qo‘shilgan postga 👍 qo‘yiladi.
+• Captionni tahrirlasangiz, video ham yangilanadi: nom, tavsif, bo‘lim.
+• Ichida bo‘limlari bor bo‘limga video qo‘yilmaydi — ichidagi bo‘limni tanlang."""
+btn_section_codes = "📋 Bo‘lim kodlari"
+section_codes_title = "<b>📋 Bo‘lim kodlari</b>\nKodni bosing — nusxalanadi. Uni captionning 1-qatoriga yozing.\n📂 — ichida bo‘limlar bor: video ularning biriga qo‘yiladi, kodni faqat <code>#kod › +Yangi bo‘lim</code> uchun ishlating."
+section_code = "<code>#{code}</code> {path}"
+section_code_parent = "<code>#{code}</code> {path} 📂"
+section_codes_empty = "Hali birorta bo‘lim yo‘q."
 channel_no_caption = "⚠️ Captionda bo‘lim yo‘li va video nomi yo‘q."
 channel_no_title = "⚠️ Video nomi yo‘q — uni captionning 2-qatoriga yozing."
 channel_bad_section = "⚠️ Bo‘lim nomi «{title}» {min}–{max} belgi bo‘lishi kerak."

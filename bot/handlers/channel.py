@@ -86,6 +86,16 @@ async def on_channel_post(
             t("channel_sections_created", sections=html("\n".join(result.new_sections)), link=link),
             key=f"channel-sections:{message.message_id}",
         )
+    if result.corrected:
+        # A near-miss name was taken for an existing section: the admins see the guess.
+        changes = "\n".join(
+            t("channel_correction", written=html(written), section=html(section))
+            for written, section in result.corrected
+        )
+        await notifier.notify(
+            t("channel_sections_corrected", changes=changes, link=link),
+            key=f"channel-corrected:{message.message_id}",
+        )
 
 
 async def _react(bot: Bot, message: Message, emoji: str) -> None:

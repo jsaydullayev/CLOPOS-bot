@@ -10,6 +10,7 @@ from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
 from bot.ui.callbacks import (
     ADMIN_PANEL,
+    CHANNEL_GUIDE,
     AdminAddVideoCb,
     AdminCategoryCb,
     AdminDeleteCategoryCb,
@@ -22,10 +23,14 @@ from bot.ui.callbacks import (
     AdminTextResetCb,
     AdminTextsCb,
     AdminVideoCb,
+    SectionCodesCb,
 )
 from bot.ui.client import section_header, video_caption, video_list, video_media
 from bot.ui.screen import COLUMNS, PAGE_SIZE, Media, Screen, button, grid, keyboard, page_row, paginate
 from bot.utils.text import format_path, html
+
+# Full paths can be long: fewer lines per page keep the message under Telegram's 4096 characters.
+CODES_PAGE_SIZE = 15
 
 
 def admin_panel() -> Screen:
@@ -33,8 +38,28 @@ def admin_panel() -> Screen:
         button(t("btn_admin_categories"), AdminCategoryCb()),
         button(t("btn_admin_add_video"), AdminPickCb()),
         button(t("btn_admin_texts"), AdminTextsCb()),
+        button(t("btn_channel_guide"), CHANNEL_GUIDE),
     ]
     return Screen(text=t("admin_panel"), markup=keyboard(grid(buttons, COLUMNS)))
+
+
+def channel_guide() -> Screen:
+    """How to post videos in the channel so they land in the right section."""
+    rows = [[button(t("btn_section_codes"), SectionCodesCb()), button(t("btn_admin_panel"), ADMIN_PANEL)]]
+    return Screen(text=t("channel_guide"), markup=keyboard(rows))
+
+
+def section_codes(tree: CatalogTree, page: int) -> Screen:
+    """Every section with its code for channel captions, in the order of the section list."""
+    chunk, page, pages = paginate(tree.walk(), page, CODES_PAGE_SIZE)
+    lines = []
+    for node in chunk:
+        # Sections that hold sections take no videos: marked, so their code is used only with › +New.
+        key = "section_code_parent" if tree.kind(node.id) is Kind.CATEGORIES else "section_code"
+        lines.append(t(key, code=node.id, path=html(format_path(tree.path(node.id), limit=None))))
+    text = t("section_codes_title") + "\n\n" + ("\n".join(lines) if lines else t("section_codes_empty"))
+    rows = [page_row(page, pages, lambda p: SectionCodesCb(page=p)), [button(t("btn_back"), CHANNEL_GUIDE)]]
+    return Screen(text=text, markup=keyboard(rows))
 
 
 def admin_category(
@@ -54,20 +79,19 @@ def admin_category(
     kind = tree.kind(node.id)
     rows: list[list[InlineKeyboardButton]] = []
     listing = ""
+    note = None
     if kind is Kind.CATEGORIES:
         children = tree.children(node.id)
         chunk, page, pages = paginate(children, page)
         rows += grid([button(_category_label(tree, child), AdminCategoryCb(id=child.id)) for child in chunk], COLUMNS)
-        count_line = None
     elif kind is Kind.VIDEOS:
         # The same layout the client sees: titles in the text, numbers on the buttons.
         chunk_videos, page, pages = paginate(videos, page)
         listing, video_rows = video_list(chunk_videos, page * PAGE_SIZE, lambda video: AdminVideoCb(id=video.id))
         rows += video_rows
-        count_line = t("videos_count", count=len(videos))
     else:
         pages = 1
-        count_line = t("admin_empty_note")
+        note = t("admin_empty_note")
     rows.append(page_row(page, pages, lambda p: AdminCategoryCb(id=node.id, page=p)))
 
     actions = []
@@ -79,7 +103,7 @@ def admin_category(
     actions.append(button(t("btn_delete"), AdminDeleteCategoryCb(id=node.id)))
     rows += grid(actions, COLUMNS)
     rows.append([button(t("btn_back"), AdminCategoryCb(id=node.parent_id or 0))])
-    text = section_header(tree, node.id, intro, count_line)
+    text = section_header(tree, node.id, intro, note)
     if listing:
         text += "\n\n" + listing
     return Screen(text=text, markup=keyboard(rows))

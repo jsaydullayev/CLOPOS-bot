@@ -98,7 +98,12 @@ Videoni video kanalga shunday caption bilan tashlang:
 Oylik hisobotni ko‘rish   ← 3-qatordan: tavsif (ixtiyoriy)
 ```
 
-- Bo‘lim topilmasa, bot uni yaratadi va adminlarga xabar beradi. Katta-kichik harf farq qilmaydi.
+Adminlar uchun to‘liq shablon botning o‘zida: `/admin` → «📢 Kanal shabloni».
+
+- **Bo‘lim kodi** — eng ishonchli usul: 1-qatorga `#12` yozing (kodlar: «📢 Kanal shabloni» → «📋 Bo‘lim kodlari»). `#12 › +Ombor` — 12-bo‘lim ichida yangi bo‘lim.
+- **Yangi bo‘lim** faqat nomi oldida `+` bo‘lsa ochiladi: `Videodarsliklar › +Ombor`. `+` dan keyingi bo‘limlar ham, topilmasa, yangi ochiladi.
+- **Nom bilan** yozilganda bot kechiradi: katta-kichik harf, bo‘sh joy va tinish belgilari, `o‘ o' oʻ` farqi, kirill/lotin o‘xshash harflar (а/a, о/o, с/c…) va 1–2 harf xatosi («Finas» → «Finans»; 5 harfdan qisqa nomlarda xato kechirilmaydi, raqamlar har doim aniq bo‘lishi kerak). Xato tuzatilsa, bot adminlarga nimani nimaga tuzatganini yozadi.
+- `+` siz va topilmagan bo‘lim ochilmaydi: postga 👎, adminlarga o‘xshash nomlar yuboriladi. Ikki bo‘limga bir xil yaqin xato ham taxmin qilinmaydi.
 - Qo‘shilgan postga bot 👍 qo‘yadi. Qo‘shilmagan postga 👎 qo‘yadi va adminlarga sababini yozadi — captionni tahrirlang, bot qayta ko‘rib chiqadi.
 - Captionni tahrirlash — videoni tahrirlash: nom, tavsif va bo‘lim yangilanadi.
 - Videolarni bittadan tashlang: albomda caption faqat birinchi videoga tushadi.

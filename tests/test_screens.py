@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from bot.services.tree import CatalogTree, CategoryNode
-from bot.ui.admin import admin_category, confirm_delete_category
+from bot.ui.admin import admin_category, admin_panel, confirm_delete_category, section_codes
 from bot.ui.callbacks import (
     AdminCategoryCb,
     AdminDeleteCategoryCb,
@@ -76,6 +76,24 @@ def test_every_button_is_blue() -> None:
     assert all(style == "primary" for style in styles)
 
 
+def test_admin_panel_has_four_buttons_in_two_rows() -> None:
+    assert texts(admin_panel()) == [
+        ["📂 Bo‘limlar", "➕ Video qo‘shish"],
+        ["✏️ Salomlashuv va matnlar", "📢 Kanal shabloni"],
+    ]
+
+
+def test_section_codes_are_paginated_in_list_order() -> None:
+    nodes = [CategoryNode(1, None, "Kassa", 1, 1), CategoryNode(2, 1, "Sozlash", 2, 1)]
+    nodes += [CategoryNode(i, None, f"Bo‘lim {i}", 1, i) for i in range(3, 18)]
+    tree = CatalogTree(nodes, {})
+    first = section_codes(tree, 0)
+    assert "<code>#1</code> Kassa 📂\n<code>#2</code> Kassa › Sozlash\n<code>#3</code> Bo‘lim 3" in first.text
+    assert texts(first) == [["1/2", "▶️"], ["⬅️ Orqaga"]]
+    assert section_codes(tree, 1).text.endswith("<code>#16</code> Bo‘lim 16\n<code>#17</code> Bo‘lim 17")
+    assert section_codes(CatalogTree([], {}), 0).text.endswith("Hali birorta bo‘lim yo‘q.")
+
+
 def test_main_menu_without_videos() -> None:
     screen = main_menu(CatalogTree([CategoryNode(1, None, "Bo‘sh", 1, 1)], {}))
     assert screen.text == "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
@@ -86,12 +104,12 @@ def test_video_list_numbers_continue_across_pages() -> None:
     tree = CatalogTree([CategoryNode(1, None, "Kassa", 1, 1)], {1: 10})
     videos = [video(i) for i in range(1, 11)]
     first = category_screen(tree, tree.get(1), videos, page=0)
-    assert first.text == "<b>Kassa</b>\n10 ta video\n\n" + "\n".join(f"{i}. Video {i}" for i in range(1, 9))
+    assert first.text == "<b>Kassa</b>\n\n" + "\n".join(f"{i}. Video {i}" for i in range(1, 9))
     assert texts(first) == [["1", "2", "3", "4"], ["5", "6", "7", "8"], ["1/2", "▶️"], ["⬅️ Orqaga"]]
     assert datas(first)[0][0] == VideoCb(id=1).pack()
 
     screen = category_screen(tree, tree.get(1), videos, page=1)
-    assert screen.text == "<b>Kassa</b>\n10 ta video\n\n9. Video 9\n10. Video 10"
+    assert screen.text == "<b>Kassa</b>\n\n9. Video 9\n10. Video 10"
     assert texts(screen) == [["9", "10"], ["◀️", "2/2"], ["⬅️ Orqaga"]]
 
 
@@ -107,7 +125,7 @@ def test_nested_category_has_back_and_home() -> None:
     nodes = [CategoryNode(1, None, "Kassa", 1, 1), CategoryNode(2, 1, "Sozlash", 2, 1)]
     tree = CatalogTree(nodes, {2: 1})
     screen = category_screen(tree, tree.get(2), [video(5, category_id=2)])
-    assert screen.text == "<b>Kassa › Sozlash</b>\n1 ta video\n\n1. Video 5"
+    assert screen.text == "<b>Kassa › Sozlash</b>\n\n1. Video 5"
     assert datas(screen)[-1] == [CategoryCb(id=1).pack(), MenuCb().pack()]
 
 
