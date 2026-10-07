@@ -1,7 +1,7 @@
-"""A photo on the greeting: set, changed, removed, and shown to clients."""
+"""A photo or video on the greeting: set, changed, removed, and shown to clients."""
 
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.methods import DeleteMessage, EditMessageMedia, SendMessage, SendPhoto
+from aiogram.methods import DeleteMessage, EditMessageMedia, SendMessage, SendPhoto, SendVideo
 from aiogram.types import MessageEntity
 
 from bot.services.catalog import add_video, create_category
@@ -47,17 +47,17 @@ async def open_greeting(harness: Harness) -> None:
 async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     await seed(harness)
     await open_greeting(harness)
-    assert "🖼 Rasm qo‘yish" in last_buttons(harness)
+    assert "🖼 Rasm yoki video qo‘yish" in last_buttons(harness)
 
-    # The photo button asks for a photo; a photo with a caption sets both.
-    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", photo=True))
-    assert last_text(harness).startswith("<b>Salomlashuv (bosh menyu)</b>\nRasmni yuboring")
+    # The button asks for a photo or video; a photo with a caption sets both.
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    assert last_text(harness).startswith("<b>Salomlashuv (bosh menyu)</b>\nRasm yoki videoni yuboring")
     await harness.send_text(ADMIN_ID, "rasm o‘rniga matn")
-    assert last_text(harness).startswith("⚠️ Rasm kutilmoqda.")
+    assert last_text(harness).startswith("⚠️ Rasm yoki video kutilmoqda.")
     bold = [MessageEntity(type="bold", offset=0, length=5)]
     await harness.send_photo(ADMIN_ID, "logo", caption="Salom! CLOPOS darslari", caption_entities=bold)
 
-    # The admin sees the result as a photo, in the same message, with the photo buttons now.
+    # The admin sees the result as a photo, in the same message, with the media buttons now.
     preview = harness.telegram.of(EditMessageMedia)[-1].media
     assert (preview.type, preview.media, preview.caption) == (
         "photo",
@@ -66,8 +66,8 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     )
     assert last_buttons(harness) == [
         "✏️ Matnni o‘zgartirish",
-        "🖼 Rasmni almashtirish",
-        "🗑 Rasmni olib tashlash",
+        "🖼 Rasm yoki videoni almashtirish",
+        "🗑 Rasm yoki videoni olib tashlash",
         "↩️ Standart holatga qaytarish",
         "⬅️ Orqaga",
     ]
@@ -81,7 +81,7 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
 
     # A new photo without a caption changes only the photo.
     await open_greeting(harness)
-    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", photo=True))
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
     await harness.send_photo(ADMIN_ID, "logo2")
     harness.telegram.reset()
     await harness.send_text(CLIENT_ID, "/start")
@@ -100,8 +100,8 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     # Removing the photo keeps the text. The preview shows it exactly, without the old photo.
     await open_greeting(harness)
     harness.telegram.reset()
-    await harness.press(ADMIN_ID, AdminTextResetCb(key="main_menu", photo=True))
-    assert last_text(harness).startswith("🗑 «Salomlashuv (bosh menyu)» rasmi olib tashlandi.")
+    await harness.press(ADMIN_ID, AdminTextResetCb(key="main_menu", media=True))
+    assert last_text(harness).startswith("🗑 «Salomlashuv (bosh menyu)» rasmi yoki videosi olib tashlandi.")
     assert call_names(harness) == ["AnswerCallbackQuery", "SendMessage", "DeleteMessage"]
     harness.telegram.reset()
     await harness.send_text(CLIENT_ID, "/start")
@@ -109,10 +109,50 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     assert last_text(harness) == "Yangi salom"
 
 
+async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
+    section_id, video_id = await seed(harness)
+    await open_greeting(harness)
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    await harness.send_video(ADMIN_ID, "promo", caption="Xush kelibsiz!")
+
+    preview = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (preview.type, preview.media, preview.caption) == ("video", file_id_of("promo"), "Xush kelibsiz!")
+
+    # Clients get the main menu as the video with the greeting under it.
+    harness.telegram.reset()
+    await harness.send_text(CLIENT_ID, "/start")
+    menu = harness.telegram.of(SendVideo)[-1]
+    assert (menu.video, menu.caption) == (file_id_of("promo"), "Xush kelibsiz!")
+    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["Finance"]
+
+    # The list stays under the greeting video: only the caption changes.
+    harness.telegram.reset()
+    await harness.press(CLIENT_ID, CategoryCb(id=section_id))
+    assert call_names(harness) == ["AnswerCallbackQuery", "EditMessageCaption"]
+    assert last_text(harness) == "<b>Finance</b>\n\n1. Reports"
+
+    # After a lesson, the greeting video comes back with the list under it.
+    await harness.press(CLIENT_ID, VideoCb(id=video_id))
+    harness.telegram.reset()
+    await harness.press(CLIENT_ID, CategoryCb(id=section_id))
+    back = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (back.type, back.media, back.caption) == ("video", file_id_of("promo"), "<b>Finance</b>\n\n1. Reports")
+    assert harness.telegram.of(DeleteMessage, SendMessage, SendVideo) == []
+
+    # A photo replaces the video.
+    await open_greeting(harness)
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    await harness.send_photo(ADMIN_ID, "logo")
+    harness.telegram.reset()
+    await harness.send_text(CLIENT_ID, "/start")
+    assert harness.telegram.of(SendVideo) == []
+    assert harness.telegram.of(SendPhoto)[-1].caption == "Xush kelibsiz!"
+
+
 async def test_photo_greeting_while_walking_the_catalog(harness: Harness) -> None:
     section_id, video_id = await seed(harness)
     await open_greeting(harness)
-    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", photo=True))
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
     await harness.send_photo(ADMIN_ID, "logo", caption="Salom")
 
     await harness.send_text(CLIENT_ID, "/start")
@@ -139,26 +179,31 @@ async def test_photo_greeting_while_walking_the_catalog(harness: Harness) -> Non
     assert harness.telegram.of(DeleteMessage, SendMessage, SendPhoto) == []
 
 
-async def test_menu_still_works_when_the_photo_cannot_be_sent(harness: Harness) -> None:
+async def test_menu_still_works_when_the_media_cannot_be_sent(harness: Harness) -> None:
     await seed(harness)
     await open_greeting(harness)
-    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", photo=True))
-    await harness.send_photo(ADMIN_ID, "old-bot-photo", caption="Salom")
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    await harness.send_video(ADMIN_ID, "old-bot-video", caption="Salom")
 
     harness.telegram.reset()
-    harness.telegram.fail_once(SendPhoto, TelegramBadRequest(method=None, message="Bad Request: wrong file identifier"))
+    harness.telegram.fail_once(SendVideo, TelegramBadRequest(method=None, message="Bad Request: wrong file identifier"))
     await harness.send_text(CLIENT_ID, "/start")
-    assert call_names(harness) == ["DeleteMessage", "SendPhoto", "SendMessage"]
+    assert call_names(harness) == ["DeleteMessage", "SendVideo", "SendMessage"]
     assert harness.telegram.of(SendMessage)[-1].text == "Salom"
 
 
-async def test_photos_are_refused_where_they_do_not_belong(harness: Harness) -> None:
+async def test_media_is_refused_where_it_does_not_belong(harness: Harness) -> None:
     await harness.send_text(ADMIN_ID, "/admin")
     await harness.press(ADMIN_ID, AdminTextsCb(key="main_menu_empty"))
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu_empty"))
     await harness.send_photo(ADMIN_ID, "x", caption="Salom")
-    assert last_text(harness).startswith("⚠️ Bu matnga rasm qo‘shib bo‘lmaydi — faqat matn yuboring.")
+    assert last_text(harness).startswith("⚠️ Bu matnga rasm yoki video qo‘shib bo‘lmaydi — faqat matn yuboring.")
+    await harness.send_video(ADMIN_ID, "y", caption="Salom")
+    assert last_text(harness).startswith("⚠️ Bu matnga rasm yoki video qo‘shib bo‘lmaydi — faqat matn yuboring.")
 
-    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", photo=True))
-    await harness.send_document(ADMIN_ID, "logo.png", mime_type="image/png")
-    assert last_text(harness).startswith("⚠️ Rasmni fayl sifatida emas, rasm sifatida yuboring.")
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    for name, mime_type in [("logo.png", "image/png"), ("promo.mp4", "video/mp4")]:
+        await harness.send_document(ADMIN_ID, name, mime_type=mime_type)
+        assert last_text(harness).startswith(
+            "⚠️ Rasm yoki videoni fayl sifatida emas, oddiy rasm yoki video qilib yuboring."
+        )

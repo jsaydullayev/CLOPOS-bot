@@ -9,7 +9,7 @@ from bot.lifecycle import on_shutdown, on_startup
 from bot.middlewares import DbSessionMiddleware, StaleCallbackMiddleware, UserLockMiddleware, UserMiddleware
 from bot.services.archive import ArchiveService
 from bot.services.background import Background
-from bot.services.content import Photo, photo_for
+from bot.services.content import Attachment, attachment_for
 from bot.services.notify import Notifier
 from bot.ui.display import Display, ReplacedRegistry
 
@@ -24,15 +24,15 @@ def create_dispatcher(
     notifier = Notifier(bot, settings.admin_ids)
     registry = ReplacedRegistry()
 
-    async def greeting_photo() -> Photo | None:
-        # Text screens shown in place of a video go under the greeting photo, like the main menu.
+    async def greeting_media() -> Attachment | None:
+        # Text screens shown in place of a video go under the greeting's photo or video, like the main menu.
         async with session_factory() as session:
-            return await photo_for(session, "main_menu")
+            return await attachment_for(session, "main_menu")
 
     dispatcher = Dispatcher(
         storage=MemoryStorage(),
         settings=settings,
-        display=Display(bot, registry, protect_content=settings.protect_content, cover=greeting_photo),
+        display=Display(bot, registry, protect_content=settings.protect_content, cover=greeting_media),
         archive=ArchiveService(bot, session_factory, settings.backup_channel_id, notifier),
         notifier=notifier,
         background=Background(),

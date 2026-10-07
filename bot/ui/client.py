@@ -5,8 +5,8 @@ from collections.abc import Callable, Sequence
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton
 
-from bot.db.models import MEDIA_PHOTO, Video
-from bot.services.content import Photo
+from bot.db.models import Video
+from bot.services.content import Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
 from bot.ui.callbacks import CategoryCb, MenuCb, VideoCb
@@ -23,10 +23,10 @@ def main_menu(
     *,
     greeting: str | None = None,
     empty_text: str | None = None,
-    photo: Photo | None = None,
+    attachment: Attachment | None = None,
 ) -> Screen:
     """greeting and empty_text are the admin's texts (HTML), by default the ones from locales.
-    With a photo, the greeting becomes its caption."""
+    With a photo or video, the greeting becomes its caption."""
     categories = tree.visible_children(None)
     if not categories:
         return Screen(text=empty_text or t("main_menu_empty"))
@@ -34,12 +34,20 @@ def main_menu(
     rows = grid([_category_button(tree, node) for node in chunk], COLUMNS)
     rows.append(page_row(page, pages, lambda p: MenuCb(page=p)))
     text = greeting or t("main_menu")
-    if photo is not None:
-        media = Media(
-            file_id=photo.file_id, media_type=MEDIA_PHOTO, caption=text, file_unique_id=photo.file_unique_id
-        )
-        return Screen(media=media, markup=keyboard(rows))
+    if attachment is not None:
+        return Screen(media=attachment_media(attachment, text), markup=keyboard(rows))
     return Screen(text=text, markup=keyboard(rows))
+
+
+def attachment_media(attachment: Attachment, caption: str) -> Media:
+    """The greeting's photo or video with the text under it; if it cannot be sent, the text goes alone."""
+    return Media(
+        file_id=attachment.file_id,
+        media_type=attachment.media_type,
+        caption=caption,
+        file_unique_id=attachment.file_unique_id,
+        optional=True,
+    )
 
 
 def category_screen(

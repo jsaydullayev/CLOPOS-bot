@@ -4,8 +4,8 @@ from collections.abc import Sequence
 
 from aiogram.types import InlineKeyboardButton
 
-from bot.db.models import MEDIA_PHOTO, Video
-from bot.services.content import TEXT_MAX, Photo
+from bot.db.models import Video
+from bot.services.content import TEXT_MAX, Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
 from bot.ui.callbacks import (
@@ -25,8 +25,8 @@ from bot.ui.callbacks import (
     AdminVideoCb,
     SectionCodesCb,
 )
-from bot.ui.client import section_header, video_caption, video_list, video_media
-from bot.ui.screen import COLUMNS, PAGE_SIZE, Media, Screen, button, grid, keyboard, page_row, paginate
+from bot.ui.client import attachment_media, section_header, video_caption, video_list, video_media
+from bot.ui.screen import COLUMNS, PAGE_SIZE, Screen, button, grid, keyboard, page_row, paginate
 from bot.utils.text import format_path, html
 
 # Full paths can be long: fewer lines per page keep the message under Telegram's 4096 characters.
@@ -200,33 +200,30 @@ def text_preview(
     key: str,
     label: str,
     text: str,
-    photo: Photo | None,
+    attachment: Attachment | None,
     *,
     customized: bool,
-    photo_allowed: bool,
+    media_allowed: bool,
     notice: str | None = None,
 ) -> Screen:
-    """The text (and photo) exactly as the client sees it, with the admin's buttons under it."""
+    """The text (with its photo or video) exactly as the client sees it, with the admin's buttons under it."""
     rows = [[button(t("btn_edit_text"), AdminTextEditCb(key=key))]]
-    if photo_allowed:
-        label_key = "btn_change_photo" if photo is not None else "btn_set_photo"
-        rows.append([button(t(label_key), AdminTextEditCb(key=key, photo=True))])
-    if photo is not None:
-        rows.append([button(t("btn_remove_photo"), AdminTextResetCb(key=key, photo=True))])
+    if media_allowed:
+        label_key = "btn_change_media" if attachment is not None else "btn_set_media"
+        rows.append([button(t(label_key), AdminTextEditCb(key=key, media=True))])
+    if attachment is not None:
+        rows.append([button(t("btn_remove_media"), AdminTextResetCb(key=key, media=True))])
     if customized:
         rows.append([button(t("btn_reset_text"), AdminTextResetCb(key=key))])
     rows.append([button(t("btn_back"), AdminTextsCb())])
-    if photo is not None:
-        media = Media(
-            file_id=photo.file_id, media_type=MEDIA_PHOTO, caption=text, file_unique_id=photo.file_unique_id
-        )
-        return Screen(media=media, markup=keyboard(rows))
+    if attachment is not None:
+        return Screen(media=attachment_media(attachment, text), markup=keyboard(rows))
     body = t("text_preview_title", label=html(label)) + "\n\n" + text
     return Screen(text=f"{notice}\n\n{body}" if notice else body, markup=keyboard(rows), plain=True)
 
 
-def text_edit_prompt(label: str, *, photo: bool, error: str | None = None) -> Screen:
-    text = t("photo_prompt" if photo else "text_prompt", label=html(label), max=TEXT_MAX)
+def text_edit_prompt(label: str, *, media: bool, error: str | None = None) -> Screen:
+    text = t("media_prompt" if media else "text_prompt", label=html(label), max=TEXT_MAX)
     return prompt(f"{error}\n\n{text}" if error else text)
 
 

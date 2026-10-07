@@ -84,29 +84,29 @@ async def update_custom_text(
     admin_id: int | None,
     *,
     value: str | None = None,
-    photo: tuple[str, str] | None = None,
+    media: tuple[str, str, str] | None = None,
 ) -> None:
-    """Change the text, the photo (file_id, file_unique_id) or both; what is not given stays."""
+    """Change the text, the media (file_id, file_unique_id, media_type) or both; what is not given stays."""
     row = await session.get(BotText, key)
     if row is None:
         row = BotText(key=key)
         session.add(row)
     if value is not None:
         row.value = value
-    if photo is not None:
-        row.photo_file_id, row.photo_unique_id = photo
+    if media is not None:
+        row.media_file_id, row.media_unique_id, row.media_type = media
     row.updated_by = admin_id
     await session.flush()
 
 
-async def remove_custom_photo(session: AsyncSession, key: str) -> None:
+async def remove_custom_media(session: AsyncSession, key: str) -> None:
     row = await session.get(BotText, key)
     if row is None:
         return
     if row.value is None:
         await session.delete(row)
     else:
-        row.photo_file_id = row.photo_unique_id = None
+        row.media_file_id = row.media_unique_id = row.media_type = None
     await session.flush()
 
 

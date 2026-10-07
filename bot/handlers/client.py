@@ -12,7 +12,7 @@ from bot.db import repo
 from bot.db.models import User
 from bot.handlers.common import answer
 from bot.services.commands import set_admin_commands
-from bot.services.content import photo_for, text_for
+from bot.services.content import attachment_for, text_for
 from bot.services.tree import Kind
 from bot.texts import t
 from bot.ui.callbacks import NOOP, CategoryCb, MenuCb, VideoCb
@@ -22,14 +22,14 @@ from bot.ui.screen import Screen
 
 
 async def menu_screen(session: AsyncSession, page: int = 0) -> Screen:
-    """The main menu with the greeting (and photo) the admin set."""
+    """The main menu with the greeting (and its photo or video) the admin set."""
     tree = await repo.load_tree(session)
     return main_menu(
         tree,
         page,
         greeting=await text_for(session, "main_menu"),
         empty_text=await text_for(session, "main_menu_empty"),
-        photo=await photo_for(session, "main_menu"),
+        attachment=await attachment_for(session, "main_menu"),
     )
 
 

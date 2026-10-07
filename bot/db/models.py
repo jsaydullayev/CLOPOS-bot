@@ -55,8 +55,10 @@ class BotText(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str | None] = mapped_column(Text)  # HTML, as Telegram formats it; None = standard text
-    photo_file_id: Mapped[str | None] = mapped_column(Text)  # a picture shown with the text
-    photo_unique_id: Mapped[str | None] = mapped_column(String(64))
+    # A photo, video or animation shown with the text (the greeting only).
+    media_file_id: Mapped[str | None] = mapped_column(Text)
+    media_unique_id: Mapped[str | None] = mapped_column(String(64))
+    media_type: Mapped[str | None] = mapped_column(String(16))  # MEDIA_PHOTO, MEDIA_VIDEO or MEDIA_ANIMATION
     updated_by: Mapped[int | None] = mapped_column(BigInteger)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

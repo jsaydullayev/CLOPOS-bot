@@ -72,7 +72,7 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
     assert last_text(harness) == (
         "<b>Salomlashuv (bosh menyu)</b> — mijoz shunday ko‘radi:\n\nXush kelibsiz! Kerakli bo‘limni tanlang."
     )
-    assert button_texts(harness) == ["✏️ Matnni o‘zgartirish", "🖼 Rasm qo‘yish", "⬅️ Orqaga"]
+    assert button_texts(harness) == ["✏️ Matnni o‘zgartirish", "🖼 Rasm yoki video qo‘yish", "⬅️ Orqaga"]
 
     # Formatting the admin used is kept.
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu"))

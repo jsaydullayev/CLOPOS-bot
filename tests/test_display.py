@@ -11,7 +11,7 @@ from aiogram.types import Chat, FSInputFile, Message, PhotoSize
 from aiogram.types import Video as TgVideo
 
 from bot.db.models import User
-from bot.services.content import Photo
+from bot.services.content import Attachment
 from bot.ui.display import Display, ReplacedRegistry
 from bot.ui.screen import Media, Screen
 from tests.conftest import FakeTelegram
@@ -100,12 +100,28 @@ async def test_video_to_list_puts_the_list_under_the_default_cover(display: Disp
 
 
 async def test_the_greeting_photo_is_the_cover_when_there_is_one(bot: Bot, telegram: FakeTelegram) -> None:
-    async def greeting() -> Photo:
-        return Photo("file-greeting", "greeting")
+    async def greeting() -> Attachment:
+        return Attachment("file-greeting", "greeting", "photo")
 
     display = Display(bot, ReplacedRegistry(), cover=greeting)
     await display.show(User(id=CHAT, last_message_id=60), TEXT, source=bot_message(60, unique_id="a"))
     assert telegram.of(EditMessageMedia)[0].media.media == "file-greeting"
+
+
+async def test_a_greeting_video_is_the_cover_and_stays_put(bot: Bot, telegram: FakeTelegram) -> None:
+    async def greeting() -> Attachment:
+        return Attachment("file-promo", "promo", "video")
+
+    display = Display(bot, ReplacedRegistry(), cover=greeting)
+    user = User(id=CHAT, last_message_id=60)
+    await display.show(user, TEXT, source=bot_message(60, unique_id="a"))
+    media = telegram.of(EditMessageMedia)[0].media
+    assert (media.type, media.media, media.caption) == ("video", "file-promo", "Menyu")
+
+    # The next text screen on the greeting video changes only the caption.
+    telegram.reset()
+    await display.show(user, TEXT, source=bot_message(60, unique_id="promo"))
+    assert calls(telegram) == ["EditMessageCaption"]
 
 
 async def test_text_on_a_photo_only_changes_the_caption(display: Display, telegram: FakeTelegram) -> None:

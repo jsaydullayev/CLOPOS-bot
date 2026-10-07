@@ -128,7 +128,7 @@ Bo‘lim › Ichki bo‘lim
 - Video tanlanganda ro‘yxat xabarining o‘zi videoga aylanadi (`editMessageMedia`): xabar o‘chirilmaydi, yangisi yuborilmaydi.
 - Video ostida: nomi (qalin) va tavsif (bo‘lsa). Yo‘l va tartib raqami ko‘rsatilmaydi.
 - «◀️ Oldingi» / «Keyingi ▶️» shu bo‘lim videolarini o‘sha xabarning o‘zida almashtiradi (`editMessageMedia`). Birinchi videoda «Oldingi», oxirgisida «Keyingi» ko‘rinmaydi.
-- «⬅️ Orqaga» ro‘yxatni o‘sha xabarning o‘zida, **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova rasmi qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
+- «⬅️ Orqaga» ro‘yxatni o‘sha xabarning o‘zida, **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova (salomlashuv rasmi yoki videosi) qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
 
 ```
 [ video ]
@@ -235,11 +235,11 @@ Mijoz ko‘radigan asosiy matnlarni admin bot ichida o‘zi yozadi — dasturchi
 
 | Matn | Qayerda o‘zgartiriladi | Mijoz qayerda ko‘radi |
 | --- | --- | --- |
-| Salomlashuv (rasm bilan ham bo‘ladi) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu (/start) |
+| Salomlashuv (rasm yoki video bilan ham bo‘ladi) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu (/start) |
 | Katalog bo‘sh bo‘lganda | Admin panel → «✏️ Salomlashuv va matnlar» | Botda hali video bo‘lmaganda, bosh menyuda |
 | Bo‘lim matni | Bo‘lim ichida → «✏️ Bo‘lim matni» | Bo‘limga kirganda, sarlavha ostida |
 
-- Matn tanlanganda bot uni mijoz ko‘radigandek ko‘rsatadi (rasm bo‘lsa — rasm bilan), tagida tugmalar: «✏️ Matnni o‘zgartirish», «🖼 Rasm qo‘yish» / «🖼 Rasmni almashtirish» (faqat salomlashuvda), «🗑 Rasmni olib tashlash» (rasm bo‘lsa), «↩️ Standart holatga qaytarish» (o‘zgartirilgan bo‘lsa), «⬅️ Orqaga». Saqlangandan keyin bot yana shu ko‘rinishni yangilangan holda ko‘rsatadi.
+- Matn tanlanganda bot uni mijoz ko‘radigandek ko‘rsatadi (rasm yoki video bo‘lsa — u bilan), tagida tugmalar: «✏️ Matnni o‘zgartirish», «🖼 Rasm yoki video qo‘yish» / «🖼 Rasm yoki videoni almashtirish» (faqat salomlashuvda), «🗑 Rasm yoki videoni olib tashlash» (bo‘lsa), «↩️ Standart holatga qaytarish» (o‘zgartirilgan bo‘lsa), «⬅️ Orqaga». Saqlangandan keyin bot yana shu ko‘rinishni yangilangan holda ko‘rsatadi.
 - Admin yangi matnni oddiy xabar qilib yuboradi. Telegram formatlashi (qalin, kursiv, havola va h.k.) saqlanadi; premium (custom) emoji oddiy emojiga almashtiriladi.
 - Matn 1000 belgigacha (rasm izohiga sig‘ishi uchun). Matn bo‘lmagan xabar yoki uzun matn qabul qilinmaydi, bot sababini aytib qayta so‘raydi.
 - **Salomlashuv rasmi.** «🖼 Rasm qo‘yish» bosilgach admin rasm yuboradi: izoh (caption) bilan — rasm ham, matn ham yangilanadi; izohsiz — faqat rasm almashadi, matn qoladi. «✏️ Matnni o‘zgartirish» orqali matn o‘zgarsa, rasm qoladi. «🗑 Rasmni olib tashlash» faqat rasmni olib tashlaydi. Rasm bo‘lsa, bosh menyu rasm bo‘lib chiqadi: tagida salomlashuv matni va bo‘lim tugmalari. Bosh menyudan bo‘limga o‘tishda rasm xabari o‘chirilib, ro‘yxat yangi xabar bo‘lib chiqadi; videodan bosh menyuga qaytishda rasm shu xabarning o‘zida almashadi. Rasm yuborilmasa (masalan, bot almashib eski `file_id` ishlamasa), bosh menyu rasmsiz chiqadi — adminga rasmni qayta yuklash kifoya. Rasm faqat salomlashuvga qo‘yiladi; fayl sifatida yuborilgan rasm qabul qilinmaydi.
@@ -252,7 +252,7 @@ Bot mobil ilovadek ishlaydi: chatda bir vaqtda faqat bitta faol bot xabari turad
 
 - Faqat inline tugmalar. Pastki klaviatura ishlatilmaydi.
 - Ekrandan ekranga o‘tish — faol xabarni tahrirlash, jumladan ro‘yxatdan videoga o‘tish va qaytish ham: bitta kartochka, eski xabar o‘chirilmaydi.
-- Xabarda rasm yoki video paydo bo‘lgach, matnli ekranlar rasm ostida (caption) chiqadi. Rasm — salomlashuv rasmi, u qo‘yilmagan bo‘lsa — standart muqova (`assets/cover.png`). Rasm turgan bo‘lsa, faqat matn va tugmalar almashadi.
+- Xabarda rasm yoki video paydo bo‘lgach, matnli ekranlar muqova ostida (caption) chiqadi. Muqova — salomlashuv rasmi yoki videosi, u qo‘yilmagan bo‘lsa — standart rasm (`assets/cover.png`). Muqova allaqachon turgan bo‘lsa, faqat matn va tugmalar almashadi.
 - Yangi xabar faqat Telegram tahrirlashga yo‘l qo‘ymaganda yuboriladi: xabar 48 soatdan eski, matn rasm ostiga sig‘maydi (1024 belgidan uzun), yoki admin matnni mijoz ko‘radigandek rasmsiz ko‘rishi kerak.
 - Faol xabar id si bazada saqlanadi (`users.last_message_id`) — /start yoki matn kelganda eskisini topib o‘chirish uchun.
 - Bot 48 soatdan eski xabarni o‘chira olmaydi — bunday holda xato chiqmaydi, shunchaki yangi xabar yuboriladi.
@@ -296,7 +296,7 @@ Videoning o‘zi serverda saqlanmaydi — bazada faqat Telegram `file_id` turadi
 | ---------- | --------- | ---------------------------------------- |
 | key        | text      | Matn kaliti: `main_menu`, `main_menu_empty` |
 | value      | text      | Matn (HTML); bo‘sh — standart matn       |
-| photo_file_id, photo_unique_id | text | Salomlashuv rasmi (bo‘lsa)  |
+| media_file_id, media_unique_id, media_type | text | Salomlashuv rasmi yoki videosi (bo‘lsa); media_type: photo / video / animation |
 | updated_by | bigint    | O‘zgartirgan admin                       |
 | updated_at | timestamp | O‘zgargan vaqt                           |
 
@@ -367,7 +367,7 @@ Bot quyidagilarning barchasi bajarilganda qabul qilinadi:
 - [ ] Tiklash skripti yangi bot tokeni bilan barcha videolarni video kanaldan qayta tiklaydi.
 - [ ] Admin salomlashuvni o‘zgartirsa, mijoz /start bosganda yangi matnni (formatlashi bilan) ko‘radi; «Standart matnga qaytarish»dan keyin standart matn qaytadi.
 - [ ] Admin bo‘lim matnini yozsa, mijoz bo‘limga kirganda uni sarlavha ostida ko‘radi; olib tashlansa, ko‘rinmaydi.
-- [ ] Admin salomlashuvga rasm qo‘ysa, mijoz /start bosganda rasm, uning tagida salomlashuv va bo‘limlar chiqadi; rasm olib tashlansa, bosh menyu matn bo‘lib qaytadi.
+- [ ] Admin salomlashuvga rasm yoki video qo‘ysa, mijoz /start bosganda rasm yoki video, uning tagida salomlashuv va bo‘limlar chiqadi; olib tashlansa, bosh menyu matn bo‘lib qaytadi.
 - [ ] Admin bo‘lmagan foydalanuvchi matnlarni o‘zgartira olmaydi.
 
 ## 10. Bosqichlar

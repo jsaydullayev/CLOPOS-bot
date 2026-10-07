@@ -62,15 +62,15 @@ class AdminTextsCb(CallbackData, prefix="at"):
 
 
 class AdminTextEditCb(CallbackData, prefix="ae"):
-    """Start changing a text (photo=False) or its photo (photo=True)."""
+    """Start changing a text (media=False) or its photo or video (media=True)."""
 
     key: str
-    photo: bool = False
+    media: bool = False
 
 
 class AdminTextResetCb(CallbackData, prefix="ar"):
     key: str
-    photo: bool = False  # True: remove only the photo
+    media: bool = False  # True: remove only the photo or video
 
 
 class AdminIntroCb(CallbackData, prefix="ai"):

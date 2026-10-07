@@ -24,6 +24,8 @@ class Media:
     media_type: str
     caption: str
     file_unique_id: str | None = None
+    # Decoration (the greeting's photo or video): if it cannot be sent, the caption goes out as text.
+    optional: bool = False
 
 
 @dataclass(frozen=True, slots=True)
