@@ -1,0 +1,140 @@
+# Botning barcha interfeys matnlari.
+# Matnni o‘zgartirish uchun faqat qo‘shtirnoq ichidagi qismni tahrirlang.
+# {nom} ko‘rinishidagi joylarni o‘chirmang — ularga bot qiymat qo‘yadi.
+# <b>...</b> — qalin yozuv (Telegram HTML), \n — yangi qator.
+
+# ── Mijoz tomoni ─────────────────────────────────────────────
+
+main_menu = "Xush kelibsiz! Kerakli bo‘limni tanlang."
+main_menu_empty = "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
+category_title = "<b>{path}</b>"
+videos_count = "{count} ta video"
+# Video sonini ham ko‘rsatish uchun: "{title} · {count}"
+category_button = "{title}"
+# Videolar ro‘yxati: nomlar xabar matnida, tugmalarda faqat raqam
+video_list_item = "{number}. {title}"
+video_number_button = "{number}"
+video_title = "<b>{title}</b>"
+
+category_deleted = "Bu bo‘lim o‘chirilgan"
+category_empty = "Bu bo‘limda hozircha video yo‘q"
+video_deleted = "Bu video o‘chirilgan"
+
+btn_back = "⬅️ Orqaga"
+btn_home = "🏠 Bosh menyu"
+btn_page_prev = "◀️"
+btn_page_next = "▶️"
+btn_page = "{page}/{pages}"
+btn_video_prev = "◀️ Oldingi"
+btn_video_next = "Keyingi ▶️"
+
+cmd_start = "Bosh menyu"
+cmd_admin = "Admin panel"
+
+# ── Admin panel ─────────────────────────────────────────────
+
+admin_panel = "<b>Admin panel</b>"
+btn_admin_categories = "📂 Bo‘limlar"
+btn_admin_add_video = "➕ Video qo‘shish"
+btn_admin_panel = "⬅️ Admin panel"
+btn_admin_texts = "✏️ Salomlashuv va matnlar"
+btn_reset_text = "↩️ Standart holatga qaytarish"
+btn_edit_text = "✏️ Matnni o‘zgartirish"
+btn_set_photo = "🖼 Rasm qo‘yish"
+btn_change_photo = "🖼 Rasmni almashtirish"
+
+texts_title = "<b>✏️ Salomlashuv va matnlar</b>\nMijoz ko‘radigan matnlar. Birini tanlang — bot uni mijoz ko‘radigandek ko‘rsatadi, tagida o‘zgartirish tugmalari bo‘ladi.\nBo‘lim matni «📂 Bo‘limlar»da, har bir bo‘lim ichida o‘zgartiriladi."
+text_preview_title = "<b>{label}</b> — mijoz shunday ko‘radi:"
+text_prompt = "<b>{label}</b>\nYangi matnni yuboring ({max} belgigacha). Qalin, kursiv, havola kabi formatlash saqlanadi."
+photo_prompt = "<b>{label}</b>\nRasmni yuboring (fayl sifatida emas, rasm sifatida).\nIzoh (caption) yozsangiz, u yangi matn bo‘ladi; yozmasangiz, matn o‘zgarmaydi."
+error_expected_photo = "⚠️ Rasm kutilmoqda."
+text_label_main_menu = "Salomlashuv (bosh menyu)"
+text_label_main_menu_empty = "Katalog bo‘sh bo‘lganda"
+text_label_customized = "{label} · o‘zgartirilgan"
+btn_remove_photo = "🗑 Rasmni olib tashlash"
+text_saved = "✅ «{label}» saqlandi."
+text_reset = "↩️ «{label}» standart holatga qaytdi."
+text_photo_removed = "🗑 «{label}» rasmi olib tashlandi."
+error_photo_not_here = "⚠️ Bu matnga rasm qo‘shib bo‘lmaydi — faqat matn yuboring."
+error_send_as_photo = "⚠️ Rasmni fayl sifatida emas, rasm sifatida yuboring."
+intro_prompt = "<b>{path}</b> — bo‘lim matni\nMijoz bo‘limga kirganda uni sarlavha ostida ko‘radi.\n\nHozirgi matn:\n{current}\n\nYangi matnni yuboring ({max} belgigacha). Qalin, kursiv, havola kabi formatlash saqlanadi."
+intro_none = "— yo‘q —"
+error_text_length = "⚠️ Matn {max} belgidan oshmasligi kerak."
+
+admin_root = "<b>📂 Bo‘limlar</b>"
+admin_root_empty = "<b>📂 Bo‘limlar</b>\nHali birorta bo‘lim yo‘q."
+admin_empty_note = "Bo‘lim bo‘sh."
+# Bo‘sh bo‘lim (ichida birorta video yo‘q) mijozlarga ko‘rinmaydi — admin buni belgidan biladi.
+admin_category_button_empty = "{title} · bo‘sh"
+
+btn_new_category = "➕ Bo‘lim"
+btn_new_subcategory = "➕ Ichki bo‘lim"
+btn_new_video = "➕ Video"
+btn_edit_intro = "✏️ Bo‘lim matni"
+btn_clear_intro = "🗑 Matnni olib tashlash"
+btn_delete = "🗑 O‘chirish"
+btn_delete_confirm = "🗑 Ha, o‘chirish"
+btn_cancel = "❌ Bekor qilish"
+
+category_name_root = "Yangi asosiy bo‘lim.\nBo‘lim nomini yozing (2–40 belgi)."
+category_name_child = "<b>{path}</b> ichida yangi bo‘lim.\nBo‘lim nomini yozing (2–40 belgi)."
+category_delete_empty = "«{title}» bo‘limi o‘chirilsinmi?"
+category_delete_full = "«{title}» ichida {contents} bor. Hammasi bilan birga o‘chirilsinmi?"
+count_categories = "{count} ta bo‘lim"
+count_videos = "{count} ta video"
+count_join = " va "
+category_deleted_done = "Bo‘lim o‘chirildi"
+
+pick_category = "<b>Video qaysi bo‘limga qo‘shilsin?</b>"
+pick_category_in = "<b>Video qaysi bo‘limga qo‘shilsin?</b>\n{path}"
+pick_category_none = "Avval bo‘lim yarating."
+pick_category_nested = "{title} ›"
+
+video_ask = "<b>{path}</b>\nVideoni yuboring."
+video_ask_title = "<b>{path}</b>\nVideo nomini yozing (2–60 belgi; tugmada to‘liq ko‘rinishi uchun 35 belgigacha tavsiya)."
+video_ask_description = "<b>{path}</b>\nQisqa tavsif yozing (300 belgigacha)."
+video_duplicate = "<b>{path}</b>\nBu video allaqachon bor: «{title}» ({where}).\nBaribir qo‘shilsinmi?"
+video_saved = "✅ Video saqlandi: «{title}»\n{path}"
+video_delete_question = "<b>Video o‘chirilsinmi?</b>"
+video_deleted_done = "Video o‘chirildi"
+flow_expired = "Bu amal eskirgan, qaytadan boshlang"
+
+btn_from_caption = "Captiondan olish"
+btn_skip = "O‘tkazib yuborish"
+btn_save = "✅ Saqlash"
+btn_add_anyway = "✅ Baribir qo‘shish"
+btn_add_more = "➕ Yana qo‘shish"
+btn_to_category = "📂 Bo‘limga qaytish"
+
+error_name_length = "⚠️ Nom {min}–{max} belgi bo‘lishi kerak."
+error_caption_title = "⚠️ Captionning birinchi qatori nom bo‘la olmaydi: {min}–{max} belgi bo‘lishi kerak."
+error_description_length = "⚠️ Tavsif {max} belgidan oshmasligi kerak."
+error_category_exists = "⚠️ Bu yerda «{title}» nomli bo‘lim bor."
+error_category_has_videos = "⚠️ Bu bo‘limda videolar bor — ichki bo‘lim qo‘shib bo‘lmaydi."
+error_category_has_children = "⚠️ Bu bo‘limda ichki bo‘limlar bor — video qo‘shib bo‘lmaydi."
+error_max_depth = "⚠️ Bo‘limlar {max} darajadan chuqur bo‘lmaydi."
+error_send_as_video = "⚠️ Videoni fayl sifatida emas, video sifatida yuboring."
+error_expected_video = "⚠️ Video kutilmoqda."
+error_expected_text = "⚠️ Matn kutilmoqda."
+error_name_separator = "⚠️ Bo‘lim nomida › va > belgilari bo‘lmasin — ular kanal captionida bo‘limlarni ajratadi."
+
+# ── Video kanal: postlardan video qo‘shish ───────────────────
+
+channel_post_failed = "{reason}\nPost: {link}\n\nCaption formati:\n1-qator — bo‘lim yo‘li: Bo‘lim › Ichki bo‘lim\n2-qator — video nomi\n3-qatordan — tavsif (ixtiyoriy)\n\nCaptionni tahrirlasangiz, bot postni qayta ko‘rib chiqadi."
+channel_sections_created = "ℹ️ Kanal posti bo‘yicha yangi bo‘lim yaratildi:\n{sections}\nPost: {link}\n\nNom xato yozilgan bo‘lsa, postni tahrirlang va ortiqcha bo‘limni admin paneldan o‘chiring."
+channel_no_caption = "⚠️ Captionda bo‘lim yo‘li va video nomi yo‘q."
+channel_no_title = "⚠️ Video nomi yo‘q — uni captionning 2-qatoriga yozing."
+channel_bad_section = "⚠️ Bo‘lim nomi «{title}» {min}–{max} belgi bo‘lishi kerak."
+channel_bad_title = "⚠️ Video nomi {min}–{max} belgi bo‘lishi kerak."
+channel_section_has_videos = "⚠️ «{title}» bo‘limida videolar bor — uning ichida bo‘lim ochib bo‘lmaydi."
+channel_section_has_children = "⚠️ «{title}» bo‘limida ichki bo‘limlar bor — videoni ulardan biriga joylang."
+channel_duplicate = "⚠️ Bu video botda allaqachon bor: «{title}» ({path})."
+channel_not_video = "⚠️ Video fayl (hujjat) sifatida tashlangan — uni video sifatida qayta tashlang."
+
+# ── Xizmat xabarlari (adminlarga) ────────────────────────────
+
+archive_failed = "⚠️ Video kanalga nusxalanmadi: «{title}» (#v{id}).\nSabab: {error}"
+backup_caption = "Baza zaxirasi · {date}"
+backup_failed = "⚠️ Baza zaxirasi olinmadi.\nSabab: {error}"
+backup_too_big = "zaxira hajmi {size} MB, Telegram esa 50 MB gacha qabul qiladi"
+error_notify = "⚠️ Botda xato: {error}"
