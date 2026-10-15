@@ -7,6 +7,7 @@ from bot.handlers import create_routers
 from bot.handlers.errors import on_error
 from bot.lifecycle import on_shutdown, on_startup
 from bot.middlewares import DbSessionMiddleware, StaleCallbackMiddleware, UserLockMiddleware, UserMiddleware
+from bot.services.admins import Admins
 from bot.services.archive import ArchiveService
 from bot.services.background import Background
 from bot.services.content import Attachment, attachment_for
@@ -21,7 +22,8 @@ def create_dispatcher(
     *,
     engine: AsyncEngine | None = None,
 ) -> Dispatcher:
-    notifier = Notifier(bot, settings.admin_ids)
+    admins = Admins(settings.admin_ids)
+    notifier = Notifier(bot, admins)
     registry = ReplacedRegistry()
 
     async def greeting_media() -> Attachment | None:
@@ -32,6 +34,8 @@ def create_dispatcher(
     dispatcher = Dispatcher(
         storage=MemoryStorage(),
         settings=settings,
+        admins=admins,
+        session_factory=session_factory,
         display=Display(bot, registry, protect_content=settings.protect_content, cover=greeting_media),
         archive=ArchiveService(bot, session_factory, settings.backup_channel_id, notifier),
         notifier=notifier,

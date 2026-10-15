@@ -1,7 +1,9 @@
 """Admin panel screens."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 
+from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton
 
 from bot.db.models import Video
@@ -9,7 +11,9 @@ from bot.services.content import TEXT_MAX, Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
 from bot.ui.callbacks import (
+    ADD_ADMIN,
     ADMIN_PANEL,
+    ADMINS,
     CHANNEL_GUIDE,
     AdminAddVideoCb,
     AdminCategoryCb,
@@ -19,6 +23,7 @@ from bot.ui.callbacks import (
     AdminIntroCb,
     AdminNewCategoryCb,
     AdminPickCb,
+    AdminRemoveCb,
     AdminTextEditCb,
     AdminTextResetCb,
     AdminTextsCb,
@@ -31,6 +36,15 @@ from bot.utils.text import format_path, html
 
 # Full paths can be long: fewer lines per page keep the message under Telegram's 4096 characters.
 CODES_PAGE_SIZE = 15
+# Longer names are cut on the remove buttons, which go two in a row.
+BUTTON_NAME_MAX = 24
+
+
+@dataclass(frozen=True, slots=True)
+class AdminEntry:
+    user_id: int
+    name: str  # first name and @username as far as the bot knows them, or the ID
+    owner: bool  # set in ADMIN_IDS (.env): cannot be removed in the panel
 
 
 def admin_panel() -> Screen:
@@ -39,8 +53,42 @@ def admin_panel() -> Screen:
         button(t("btn_admin_add_video"), AdminPickCb()),
         button(t("btn_admin_texts"), AdminTextsCb()),
         button(t("btn_channel_guide"), CHANNEL_GUIDE),
+        button(t("btn_admins"), ADMINS),
     ]
     return Screen(text=t("admin_panel"), markup=keyboard(grid(buttons, COLUMNS)))
+
+
+def admins_screen(entries: Sequence[AdminEntry], notice: str | None = None) -> Screen:
+    """Everyone who can open the admin panel; the ones added here have a remove button."""
+    lines = [t("admins_owner_line" if entry.owner else "admins_line", name=html(entry.name)) for entry in entries]
+    text = t("admins_title") + "\n\n" + "\n".join(lines)
+    removable = [
+        button(t("btn_remove_admin", name=_shorten(entry.name)), AdminRemoveCb(user_id=entry.user_id))
+        for entry in entries
+        if not entry.owner
+    ]
+    rows = grid(removable, COLUMNS)
+    rows.append([button(t("btn_add_admin"), ADD_ADMIN), button(t("btn_admin_panel"), ADMIN_PANEL)])
+    return Screen(text=f"{notice}\n\n{text}" if notice else text, markup=keyboard(rows))
+
+
+def confirm_remove_admin(entry: AdminEntry) -> Screen:
+    rows = [
+        [
+            button(t("btn_remove_admin_confirm"), AdminRemoveCb(user_id=entry.user_id, confirm=True)),
+            button(t("btn_cancel"), ADMINS),
+        ],
+    ]
+    return Screen(text=t("admin_remove_question", name=html(entry.name)), markup=keyboard(rows))
+
+
+def add_admin_prompt(error: str | None = None) -> Screen:
+    text = t("admin_add_prompt")
+    return prompt(f"{error}\n\n{text}" if error else text, cancel=ADMINS)
+
+
+def _shorten(name: str) -> str:
+    return name if len(name) <= BUTTON_NAME_MAX else name[: BUTTON_NAME_MAX - 1] + "…"
 
 
 def channel_guide() -> Screen:
@@ -238,10 +286,15 @@ def intro_prompt(tree: CatalogTree, category_id: int, current: str | None, error
     return prompt(f"{error}\n\n{text}" if error else text, buttons)
 
 
-def prompt(text: str, buttons: Sequence[InlineKeyboardButton] = ()) -> Screen:
-    """A step of an admin dialog: always ends with a cancel button."""
-    cancel = button(t("btn_cancel"), AdminFlowCb(action="cancel"))
-    return Screen(text=text, markup=keyboard(grid([*buttons, cancel], COLUMNS)))
+def prompt(
+    text: str,
+    buttons: Sequence[InlineKeyboardButton] = (),
+    *,
+    cancel: CallbackData | str | None = None,
+) -> Screen:
+    """A step of an admin dialog: always ends with a cancel button (by default, back where it began)."""
+    cancel_button = button(t("btn_cancel"), cancel or AdminFlowCb(action="cancel"))
+    return Screen(text=text, markup=keyboard(grid([*buttons, cancel_button], COLUMNS)))
 
 
 def _category_label(tree: CatalogTree, node: CategoryNode) -> str:

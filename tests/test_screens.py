@@ -76,10 +76,11 @@ def test_every_button_is_blue() -> None:
     assert all(style == "primary" for style in styles)
 
 
-def test_admin_panel_has_four_buttons_in_two_rows() -> None:
+def test_admin_panel_buttons_go_two_in_a_row() -> None:
     assert texts(admin_panel()) == [
         ["📂 Bo‘limlar", "➕ Video qo‘shish"],
         ["✏️ Salomlashuv va matnlar", "📢 Kanal shabloni"],
+        ["👥 Adminlar"],
     ]
 
 

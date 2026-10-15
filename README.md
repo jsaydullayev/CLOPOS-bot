@@ -29,7 +29,7 @@ cp .env.example .env
 | O‘zgaruvchi | Majburiy | Izoh |
 | --- | --- | --- |
 | `BOT_TOKEN` | ha | @BotFather bergan token |
-| `ADMIN_IDS` | ha | Adminlar ID si, vergul bilan: `111,222` |
+| `ADMIN_IDS` | ha | Asosiy adminlar ID si, vergul bilan: `111,222`. Boshqa adminlarni ular botning o‘zida qo‘shadi: `/admin` → «👥 Adminlar». Asosiy adminni paneldan olib tashlab bo‘lmaydi |
 | `BACKUP_CHANNEL_ID` | ha | Video kanal ID si (`-100…`) |
 | `WEBHOOK_URL` | webhookda | `https://DOMEN/webhook`. Bo‘sh bo‘lsa bot polling rejimida ishlaydi |
 | `WEBHOOK_SECRET` | webhookda | Tasodifiy satr: lotin harflari, raqamlar, `_` va `-` |

@@ -18,6 +18,7 @@ class DatabaseSettings(BaseSettings):
 
 class Settings(DatabaseSettings):
     bot_token: str
+    # The owners: always admins. More admins are added in the admin panel (services/admins.py).
     admin_ids: Annotated[frozenset[int], NoDecode] = frozenset()
     backup_channel_id: int
 
@@ -46,9 +47,6 @@ class Settings(DatabaseSettings):
     @property
     def webhook_path(self) -> str:
         return urlparse(self.webhook_url).path or "/webhook"
-
-    def is_admin(self, user_id: int) -> bool:
-        return user_id in self.admin_ids
 
 
 @lru_cache

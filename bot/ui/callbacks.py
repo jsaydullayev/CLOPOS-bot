@@ -6,6 +6,8 @@ from aiogram.filters.callback_data import CallbackData
 NOOP = "x"
 ADMIN_PANEL = "ap"
 CHANNEL_GUIDE = "ag"
+ADMINS = "al"
+ADD_ADMIN = "aa"
 
 
 class MenuCb(CallbackData, prefix="m"):
@@ -84,6 +86,13 @@ class SectionCodesCb(CallbackData, prefix="ao"):
     """Section codes for channel captions."""
 
     page: int = 0
+
+
+class AdminRemoveCb(CallbackData, prefix="au"):
+    """Taking the admin rights away from a user added in the panel."""
+
+    user_id: int
+    confirm: bool = False
 
 
 class AdminFlowCb(CallbackData, prefix="af"):

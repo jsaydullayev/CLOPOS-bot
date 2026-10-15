@@ -210,6 +210,12 @@ class Harness:
         await self._feed(message=message)
         return message.message_id
 
+    async def send(self, user_id: int, **content: Any) -> int:
+        """Any other message, for example a shared contact or a forward."""
+        message = self._message(user_id, **content)
+        await self._feed(message=message)
+        return message.message_id
+
     async def send_video(self, user_id: int, unique_id: str, caption: str | None = None) -> int:
         video = TgVideo(file_id=file_id_of(unique_id), file_unique_id=unique_id, width=1, height=1, duration=1)
         message = self._message(user_id, video=video, caption=caption)

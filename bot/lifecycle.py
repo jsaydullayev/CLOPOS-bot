@@ -1,9 +1,10 @@
 import logging
 
 from aiogram import Bot, Dispatcher
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from bot.config import Settings
+from bot.services.admins import Admins
 from bot.services.archive import ArchiveService
 from bot.services.background import Background
 from bot.services.commands import set_default_commands
@@ -18,11 +19,15 @@ async def on_startup(
     bot: Bot,
     dispatcher: Dispatcher,
     settings: Settings,
+    admins: Admins,
+    session_factory: async_sessionmaker[AsyncSession],
     archive: ArchiveService,
     notifier: Notifier,
     background: Background,
 ) -> None:
-    await set_default_commands(bot, settings)
+    async with session_factory() as session:
+        await admins.load(session)
+    await set_default_commands(bot, admins)
     await archive.start()
     if settings.db_backup_enabled:
         background.start(backup_loop(bot, settings, notifier), name="db-backup")

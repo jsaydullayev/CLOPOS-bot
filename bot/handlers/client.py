@@ -7,10 +7,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import Settings
 from bot.db import repo
 from bot.db.models import User
 from bot.handlers.common import answer
+from bot.services.admins import Admins
 from bot.services.commands import set_admin_commands
 from bot.services.content import attachment_for, text_for
 from bot.services.tree import Kind
@@ -40,12 +40,12 @@ async def start(
     session: AsyncSession,
     db_user: User,
     display: Display,
-    settings: Settings,
+    admins: Admins,
 ) -> None:
     await state.clear()
     await display.delete(message.chat.id, message.message_id)
     await display.show(db_user, await menu_screen(session), edit=False)
-    if settings.is_admin(db_user.id):
+    if db_user.id in admins:
         await set_admin_commands(bot, db_user.id)
 
 

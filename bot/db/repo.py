@@ -3,7 +3,7 @@
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.db.models import BotText, Category, Video
+from bot.db.models import Admin, BotText, Category, User, Video
 from bot.services.tree import CatalogTree, CategoryNode
 
 
@@ -112,6 +112,32 @@ async def remove_custom_media(session: AsyncSession, key: str) -> None:
 
 async def delete_custom_text(session: AsyncSession, key: str) -> None:
     await session.execute(delete(BotText).where(BotText.key == key))
+
+
+async def list_admins(session: AsyncSession) -> list[Admin]:
+    """Admins added in the panel, in the order they were added."""
+    return list(await session.scalars(select(Admin).order_by(Admin.created_at, Admin.user_id)))
+
+
+async def add_admin(session: AsyncSession, user_id: int, *, name: str | None, added_by: int | None) -> None:
+    session.add(Admin(user_id=user_id, name=name, added_by=added_by))
+    await session.flush()
+
+
+async def delete_admin(session: AsyncSession, user_id: int) -> bool:
+    result = await session.execute(delete(Admin).where(Admin.user_id == user_id))
+    return result.rowcount > 0
+
+
+async def get_users(session: AsyncSession, user_ids: list[int]) -> dict[int, User]:
+    users = await session.scalars(select(User).where(User.id.in_(user_ids)))
+    return {user.id: user for user in users}
+
+
+async def find_user_by_username(session: AsyncSession, username: str) -> User | None:
+    """A user who has written to the bot, by @username (without the @, any letter case)."""
+    query = select(User).where(func.lower(User.username) == username.lower())
+    return await session.scalar(query.order_by(User.last_active_at.desc()).limit(1))
 
 
 async def video_ids_without_backup(session: AsyncSession) -> list[int]:

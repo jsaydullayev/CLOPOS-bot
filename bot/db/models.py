@@ -32,6 +32,17 @@ class User(Base):
     last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Admin(Base):
+    """An admin added in the admin panel. The owners in ADMIN_IDS (.env) are not stored here."""
+
+    __tablename__ = "admins"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    name: Mapped[str | None] = mapped_column(String(255))  # as known when added
+    added_by: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Category(Base):
     __tablename__ = "categories"
 

@@ -43,7 +43,7 @@ Qidiruv, bir nechta til, statistika va boshqa imkoniyatlar keyingi versiyalarda 
 | Rol   | Kim                                                            | Nima qila oladi                                                  |
 | ----- | -------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Mijoz | /start bosgan har bir foydalanuvchi — bot hamma uchun ochiq     | Bo‘limlarni ko‘radi, videoni ochadi                              |
-| Admin | ID si `ADMIN_IDS` ro‘yxatida bo‘lgan foydalanuvchi (3–4 kishi)  | Mijoz imkoniyatlari + bo‘lim va videolarni yaratish, o‘chirish   |
+| Admin | ID si `ADMIN_IDS` ro‘yxatida bo‘lgan foydalanuvchi (asosiy admin) yoki admin panelda «👥 Adminlar» orqali qo‘shilgan foydalanuvchi | Mijoz imkoniyatlari + bo‘lim va videolarni yaratish, o‘chirish   |
 | Kanal admini | Video kanalga post yoza oladigan har kim | Kanalga post tashlab video qo‘shadi, captionni tahrirlab o‘zgartiradi |
 
 ## 4. Mijoz tomoni
@@ -227,7 +227,7 @@ Bo‘lim ichidagi video tugmasi bosilganda admin videoni ko‘radi va ostida «�
 
 ### 5.6 Xavfsizlik
 
-Har bir admin amali (xabar ham, tugma ham) serverda `ADMIN_IDS` bo‘yicha qayta tekshiriladi. Admin bo‘lmagan foydalanuvchi eski admin tugmasini bossa ham hech narsa bajarilmaydi. Postlar faqat `BACKUP_CHANNEL_ID` kanalidan qabul qilinadi. Kanalga post yoza oladigan har kim video qo‘sha oladi, shuning uchun kanal adminlari ro‘yxatini shunga qarab tuzing.
+Har bir admin amali (xabar ham, tugma ham) serverda adminlar ro‘yxati (`ADMIN_IDS` va panelda qo‘shilganlar) bo‘yicha qayta tekshiriladi. Admin panelda «👥 Adminlar»: ro‘yxat, «➕ Admin qo‘shish» (kontakt, forward, @username yoki ID bilan) va qo‘shilgan adminni olib tashlash. `ADMIN_IDS` dagi asosiy adminlarni paneldan olib tashlab bo‘lmaydi — bot hech qachon adminsiz qolmaydi. Admin bo‘lmagan foydalanuvchi eski admin tugmasini bossa ham hech narsa bajarilmaydi. Postlar faqat `BACKUP_CHANNEL_ID` kanalidan qabul qilinadi. Kanalga post yoza oladigan har kim video qo‘sha oladi, shuning uchun kanal adminlari ro‘yxatini shunga qarab tuzing.
 
 ### 5.7 Matnlar
 
