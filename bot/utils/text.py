@@ -32,6 +32,11 @@ def _is_emoji(char: str) -> bool:
     return any(low <= code <= high for low, high in _EMOJI_RANGES)
 
 
+def is_emoji(text: str, *, max_length: int = 16) -> bool:
+    """Only emoji (one, or a few joined like 👨‍💻 or a flag): what a section's button can start with."""
+    return 0 < len(text) <= max_length and all(_is_emoji(char) for char in text)
+
+
 def clean_name(raw: str) -> str:
     """Drop emoji and control characters and collapse whitespace."""
     kept: list[str] = []

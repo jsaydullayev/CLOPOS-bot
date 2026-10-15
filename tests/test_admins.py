@@ -12,10 +12,11 @@ from bot.db import repo
 from bot.db.models import Admin, User
 from bot.services.admins import Admins
 from bot.services.notify import Notifier
+from bot.texts import t
 from bot.ui.callbacks import ADD_ADMIN, ADMINS, AdminRemoveCb
 from tests.conftest import ADMIN_ID, CLIENT_ID, FakeTelegram, Harness
 
-MENU = "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
+MENU = t("main_menu_empty")
 
 
 def last_text(harness: Harness) -> str:

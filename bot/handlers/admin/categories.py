@@ -14,15 +14,19 @@ from bot.handlers.common import NOT_COMMAND, answer, render_error
 from bot.services.catalog import CatalogError, create_category, remove_category
 from bot.services.tree import CatalogTree, Kind
 from bot.texts import t
-from bot.ui.admin import confirm_delete_category, prompt
-from bot.ui.callbacks import AdminCategoryCb, AdminDeleteCategoryCb, AdminNewCategoryCb
+from bot.ui.admin import confirm_delete_category, emoji_prompt, prompt
+from bot.ui.callbacks import AdminCategoryCb, AdminDeleteCategoryCb, AdminEmojiCb, AdminNewCategoryCb
 from bot.ui.display import Display
 from bot.ui.screen import Screen
-from bot.utils.text import format_path, html
+from bot.utils.text import format_path, html, is_emoji
 
 
 class CategoryForm(StatesGroup):
     name = State()
+
+
+class EmojiForm(StatesGroup):
+    emoji = State()
 
 
 def name_prompt(tree: CatalogTree, parent_id: int | None, error: str | None = None) -> Screen:
@@ -155,12 +159,64 @@ async def delete_confirmed(
     await display.show(db_user, await render_category(session, settings, deleted.parent_id), source=callback.message)
 
 
+async def edit_emoji(
+    callback: CallbackQuery,
+    callback_data: AdminEmojiCb,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
+    settings: Settings,
+) -> None:
+    await state.clear()
+    category = await repo.get_category(session, callback_data.id)
+    if category is None:
+        await answer(callback, t("category_deleted"))
+        await display.show(db_user, await render_category(session, settings, None), source=callback.message)
+        return
+    await answer(callback)
+    if callback_data.clear:
+        category.emoji = None
+        await display.show(db_user, await render_category(session, settings, category.id), source=callback.message)
+        return
+    await state.set_state(EmojiForm.emoji)
+    await state.update_data(category_id=category.id)
+    tree = await repo.load_tree(session)
+    await display.show(db_user, emoji_prompt(tree, tree.get(category.id)), source=callback.message)
+
+
+async def receive_emoji(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
+    settings: Settings,
+) -> None:
+    await display.delete(message.chat.id, message.message_id)
+    category = await repo.get_category(session, (await state.get_data()).get("category_id"))
+    if category is None:
+        await state.clear()
+        await display.show(db_user, await render_category(session, settings, None))
+        return
+    emoji = (message.text or "").strip()
+    if not is_emoji(emoji):
+        tree = await repo.load_tree(session)
+        await display.show(db_user, emoji_prompt(tree, tree.get(category.id), t("error_expected_emoji")))
+        return
+    category.emoji = emoji
+    await state.clear()
+    await display.show(db_user, await render_category(session, settings, category.id))
+
+
 def create_router() -> Router:
     router = Router(name="admin-categories")
     router.callback_query.register(browse, AdminCategoryCb.filter())
     router.callback_query.register(ask_name, AdminNewCategoryCb.filter())
     router.message.register(receive_name, CategoryForm.name, F.text, NOT_COMMAND)
     router.message.register(name_not_text, CategoryForm.name, NOT_COMMAND)
+    router.callback_query.register(edit_emoji, AdminEmojiCb.filter())
+    router.message.register(receive_emoji, EmojiForm.emoji, NOT_COMMAND)
     router.callback_query.register(ask_delete, AdminDeleteCategoryCb.filter(~F.confirm))
     router.callback_query.register(delete_confirmed, AdminDeleteCategoryCb.filter(F.confirm))
     return router

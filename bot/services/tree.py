@@ -17,6 +17,7 @@ class CategoryNode:
     title: str
     depth: int
     position: int
+    emoji: str | None = None  # the admin's choice; None: one by what the section holds
 
 
 class Kind(Enum):

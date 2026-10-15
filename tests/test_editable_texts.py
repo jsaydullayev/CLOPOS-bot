@@ -8,8 +8,10 @@ from aiogram.types import Chat, Message, MessageEntity, Update
 from aiogram.types import User as TgUser
 
 from bot.services.catalog import add_video, create_category
+from bot.texts import t
 from bot.ui.callbacks import (
     ADMIN_PANEL,
+    CONTACTS,
     AdminCategoryCb,
     AdminFlowCb,
     AdminIntroCb,
@@ -65,13 +67,16 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
     await harness.send_text(ADMIN_ID, "/admin")
     assert "✏️ Salomlashuv va matnlar" in button_texts(harness)
     await harness.press(ADMIN_ID, AdminTextsCb())
-    assert button_texts(harness) == ["Salomlashuv (bosh menyu)", "Katalog bo‘sh bo‘lganda", "⬅️ Admin panel"]
+    assert button_texts(harness) == [
+        "Salomlashuv (bosh menyu)",
+        "Katalog bo‘sh bo‘lganda",
+        "📞 Aloqa va havolalar",
+        "⬅️ Admin panel",
+    ]
 
     # The greeting as the client sees it, with the edit buttons under it.
     await harness.press(ADMIN_ID, AdminTextsCb(key="main_menu"))
-    assert last_text(harness) == (
-        "<b>Salomlashuv (bosh menyu)</b> — mijoz shunday ko‘radi:\n\nXush kelibsiz! Kerakli bo‘limni tanlang."
-    )
+    assert last_text(harness) == "<b>Salomlashuv (bosh menyu)</b> — mijoz shunday ko‘radi:\n\n" + t("main_menu")
     assert button_texts(harness) == ["✏️ Matnni o‘zgartirish", "🖼 Rasm yoki video qo‘yish", "⬅️ Orqaga"]
 
     # Formatting the admin used is kept.
@@ -97,7 +102,7 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
     await harness.press(ADMIN_ID, AdminTextResetCb(key="main_menu"))
     assert last_text(harness).startswith("↩️ «Salomlashuv (bosh menyu)» standart holatga qaytdi.")
     await harness.send_text(CLIENT_ID, "/start")
-    assert last_text(harness) == "Xush kelibsiz! Kerakli bo‘limni tanlang."
+    assert last_text(harness) == t("main_menu")
 
 
 async def test_text_is_checked_and_can_be_cancelled(harness: Harness) -> None:
@@ -114,7 +119,7 @@ async def test_text_is_checked_and_can_be_cancelled(harness: Harness) -> None:
     await harness.press(ADMIN_ID, AdminFlowCb(action="cancel"))
     assert last_text(harness).startswith("<b>Katalog bo‘sh bo‘lganda</b> — mijoz shunday ko‘radi:")
     await harness.send_text(CLIENT_ID, "/start")
-    assert last_text(harness) == "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
+    assert last_text(harness) == t("main_menu_empty")
 
 
 async def test_admin_writes_a_section_introduction(harness: Harness) -> None:
@@ -126,18 +131,20 @@ async def test_admin_writes_a_section_introduction(harness: Harness) -> None:
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id))
     assert "Hozirgi matn:\n— yo‘q —" in last_text(harness)
 
-    await harness.send_text(ADMIN_ID, "Bu bo‘limda moliya hisobotlari haqida videolar.")
-    assert last_text(harness) == "<b>Finance</b>\nBu bo‘limda moliya hisobotlari haqida videolar.\n\n1. Reports"
+    intro = "Bu bo‘limda moliya hisobotlari haqida videolar."
+    await harness.send_text(ADMIN_ID, intro)
+    assert last_text(harness) == f"🎬 <b>Finance</b>\n{intro}\n\n1. Reports"  # the admin's view
 
+    # The client gets the introduction under the title, then the short line on what to do.
     await harness.send_text(CLIENT_ID, "/start")
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
-    assert last_text(harness) == "<b>Finance</b>\nBu bo‘limda moliya hisobotlari haqida videolar.\n\n1. Reports"
+    assert last_text(harness) == f"🎬 <b>Finance</b>\n{intro}\n\n" + t("hint_videos") + "\n1. Reports"
 
     # Removing the introduction.
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id))
     assert "🗑 Matnni olib tashlash" in button_texts(harness)
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id, clear=True))
-    assert last_text(harness) == "<b>Finance</b>\n\n1. Reports"
+    assert last_text(harness) == "🎬 <b>Finance</b>\n\n1. Reports"
 
 
 async def test_clients_cannot_change_texts(harness: Harness) -> None:
@@ -147,4 +154,34 @@ async def test_clients_cannot_change_texts(harness: Harness) -> None:
     await harness.send_text(CLIENT_ID, "Buzilgan salom")
     await harness.press(CLIENT_ID, ADMIN_PANEL)
     await harness.send_text(CLIENT_ID, "/start")
-    assert last_text(harness) == "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
+    assert last_text(harness) == t("main_menu_empty")
+
+
+async def test_contacts_appear_once_the_admin_writes_them(harness: Harness) -> None:
+    await seed(harness)
+    await harness.send_text(CLIENT_ID, "/start")
+    assert button_texts(harness) == ["🎬 Finance"]  # nothing written yet: no contacts button
+
+    # The admin sees the template and a note that clients do not see it yet.
+    await harness.send_text(ADMIN_ID, "/admin")
+    await harness.press(ADMIN_ID, AdminTextsCb(key="contacts"))
+    assert last_text(harness).startswith("ℹ️ Hali yozilmagan: mijozlarga «📞 Aloqa» tugmasi ko‘rinmaydi.")
+    assert last_text(harness).endswith(t("contacts"))
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="contacts"))
+    await harness.send_text(ADMIN_ID, "☎️ +998 90 123 45 67\n💬 @clopos_support")
+
+    # Clients get a green button at the bottom, on its own row.
+    await harness.send_text(CLIENT_ID, "/start")
+    menu = harness.telegram.of(SendMessage)[-1]
+    rows = menu.reply_markup.inline_keyboard
+    assert [[button.text for button in row] for row in rows] == [["🎬 Finance"], ["📞 Aloqa va foydali havolalar"]]
+    assert (rows[0][0].style, rows[1][0].style) == ("primary", "success")
+
+    await harness.press(CLIENT_ID, CONTACTS)
+    assert last_text(harness) == "☎️ +998 90 123 45 67\n💬 @clopos_support"
+    assert button_texts(harness) == ["⬅️ Orqaga"]
+
+    # Back to the template: the button is gone again.
+    await harness.press(ADMIN_ID, AdminTextResetCb(key="contacts"))
+    await harness.send_text(CLIENT_ID, "/start")
+    assert button_texts(harness) == ["🎬 Finance"]

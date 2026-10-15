@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from bot.__main__ import build_webhook_app
 from bot.app import create_dispatcher
+from bot.texts import t
 from tests.conftest import CLIENT_ID, FakeTelegram, make_settings
 
 WEBHOOK_SETTINGS = {"webhook_url": "https://bot.example.uz/webhook", "webhook_secret": "secret-123"}
@@ -66,4 +67,4 @@ async def test_webhook_accepts_only_telegram_requests(
         assert response.status == 200
         await wait_for(lambda: telegram.of(SendMessage))
 
-    assert telegram.of(SendMessage)[0].text == "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
+    assert telegram.of(SendMessage)[0].text == t("main_menu_empty")

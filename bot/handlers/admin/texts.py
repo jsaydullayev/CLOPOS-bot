@@ -13,11 +13,13 @@ from bot.handlers.admin.common import render_category
 from bot.handlers.common import NOT_COMMAND, answer, render_error
 from bot.services.catalog import CatalogError
 from bot.services.content import (
+    CONTACTS_TEXT,
     EDITABLE_TEXTS,
     MEDIA_TEXTS,
     attachment_for,
     attachment_from_message,
     is_media_file,
+    is_written,
     text_for,
     text_from_message,
 )
@@ -45,12 +47,16 @@ async def render_texts(session: AsyncSession, notice: str | None = None) -> Scre
 
 
 async def render_text_preview(session: AsyncSession, key: str, notice: str | None = None) -> Screen:
+    written = await is_written(session, key)
+    if key == CONTACTS_TEXT and not written and notice is None:
+        # The standard contacts are a template: clients do not see the button until they are written.
+        notice = t("contacts_not_written")
     return text_preview(
         key,
         _labels()[key],
         await text_for(session, key),
         await attachment_for(session, key),
-        customized=await repo.get_custom_text(session, key) is not None,
+        customized=written,
         media_allowed=key in MEDIA_TEXTS,
         notice=notice,
     )
@@ -144,7 +150,7 @@ async def reset_text(
         await repo.remove_custom_media(session, key)
         notice = t("text_media_removed", label=_labels()[key])
     else:
-        await repo.delete_custom_text(session, key)
+        await repo.reset_custom_text(session, key)
         notice = t("text_reset", label=_labels()[key])
     await display.show(db_user, await render_text_preview(session, key, notice), source=callback.message)
 

@@ -51,6 +51,8 @@ class Category(Base):
         ForeignKey("categories.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(40))
+    # Shown before the title on the section's button; None: one by what the section holds.
+    emoji: Mapped[str | None] = mapped_column(String(32))
     # Introduction the client sees under the title when entering the section (HTML).
     intro: Mapped[str | None] = mapped_column(Text)
     depth: Mapped[int] = mapped_column(SmallInteger)

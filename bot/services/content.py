@@ -19,10 +19,15 @@ from bot.texts import t
 # Photo and video captions are limited to 1024 characters, so a text must fit under them.
 TEXT_MAX = 1000
 
+# Contacts, links and usernames behind the «📞 Aloqa» button. Clients see the button only once the
+# admin has written them: the standard text is a template with made-up numbers.
+CONTACTS_TEXT = "contacts"
+
 # Texts the admin can change in «✏️ Matnlar», with the text key of their label.
 EDITABLE_TEXTS: dict[str, str] = {
     "main_menu": "text_label_main_menu",
     "main_menu_empty": "text_label_main_menu_empty",
+    CONTACTS_TEXT: "text_label_contacts",
 }
 # Texts that can be shown with a photo or video.
 MEDIA_TEXTS = frozenset({"main_menu"})
@@ -43,6 +48,12 @@ class Attachment:
 async def text_for(session: AsyncSession, key: str) -> str:
     row = await repo.get_custom_text(session, key)
     return row.value if row is not None and row.value else t(key)
+
+
+async def is_written(session: AsyncSession, key: str) -> bool:
+    """The admin has written this text (a photo or video alone does not count)."""
+    row = await repo.get_custom_text(session, key)
+    return row is not None and bool(row.value)
 
 
 async def attachment_for(session: AsyncSession, key: str) -> Attachment | None:

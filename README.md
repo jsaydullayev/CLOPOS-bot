@@ -81,10 +81,13 @@ python -m bot
 ## 5. Matnlarni tahrirlash
 
 **Admin bot ichida o‘zi o‘zgartiradi:**
-- Salomlashuv (rasm yoki video bilan ham) va «katalog bo‘sh» matni — `/admin` → «✏️ Salomlashuv va matnlar» → matnni tanlang. Bot uni mijoz ko‘radigandek ko‘rsatadi, tagida «✏️ Matnni o‘zgartirish», «🖼 Rasm yoki video qo‘yish», «🗑 Rasm yoki videoni olib tashlash», «↩️ Standart holatga qaytarish» tugmalari bo‘ladi.
+- Salomlashuv (rasm, video yoki GIF bilan ham), «katalog bo‘sh» matni va «📞 Aloqa va havolalar» — `/admin` → «✏️ Salomlashuv va matnlar» → matnni tanlang. Bot uni mijoz ko‘radigandek ko‘rsatadi, tagida «✏️ Matnni o‘zgartirish», «🖼 Rasm yoki video qo‘yish», «🗑 Rasm yoki videoni olib tashlash», «↩️ Standart holatga qaytarish» tugmalari bo‘ladi. «↩️ Standart holatga qaytarish» faqat matnni tiklaydi, rasm yoki video joyida qoladi.
+- Aloqa — telefon, @username, linklar. Admin yozmaguncha mijozga ko‘rinmaydi; yozgach, bosh menyu pastida yashil «📞 Aloqa va foydali havolalar» tugmasi chiqadi.
+- Bo‘lim emojisi — `/admin` → «📂 Bo‘limlar» → bo‘lim → «😀 Emoji». Tanlanmasa, 📂 (ichida bo‘limlar) yoki 🎬 (ichida videolar).
+- Salomlashuv videosi GIF bo‘lib (ovozsiz, o‘zi takrorlanib) tursin desangiz, uni Telegram’da ovozini o‘chirib (🔇) yuboring — Telegram ovozsiz videoni GIF qiladi.
 - Bo‘lim matni (mijoz bo‘limga kirganda ko‘radi) — `/admin` → «📂 Bo‘limlar» → bo‘lim → «✏️ Bo‘lim matni».
 
-Matnni oddiy xabar qilib yuboring: qalin, kursiv, havola saqlanadi. Rasm yoki videoni (yoki GIF) «🖼 Rasm yoki video qo‘yish»dan keyin yuboring: izoh (caption) yozsangiz, u yangi salomlashuv matni bo‘ladi, yozmasangiz, faqat rasm yoki video almashadi. Salomlashuv rasmi yoki videosi botning «kartochkasi» bo‘ladi: bo‘limlar ro‘yxati ham uning ostida chiqadi. Bot almashsa (yangi token), rasm yoki videoni qayta yuklang.
+Matnni oddiy xabar qilib yuboring: qalin, kursiv, havola saqlanadi. Rasm yoki videoni (yoki GIF) «🖼 Rasm yoki video qo‘yish»dan keyin yuboring: izoh (caption) yozsangiz, u yangi salomlashuv matni bo‘ladi, yozmasangiz, faqat rasm yoki video almashadi. Salomlashuv rasmi botning «kartochkasi» bo‘ladi: bo‘limlar ro‘yxati ham uning ostida chiqadi. Video yoki GIF esa faqat bosh menyuda o‘ynaydi — bo‘limlarda uning o‘rnida standart ko‘k muqova turadi. Bot almashsa (yangi token), rasm yoki videoni qayta yuklang.
 
 **Standart matnlar va tugma nomlari** — [locales/uz.toml](locales/uz.toml) (dasturchi uchun). `{nom}` ko‘rinishidagi joylarni o‘chirmang. Serverda o‘zgartirgandan keyin: `docker compose up -d --build`.
 

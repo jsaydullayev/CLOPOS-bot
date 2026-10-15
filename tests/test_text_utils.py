@@ -1,4 +1,4 @@
-from bot.utils.text import clean_name, first_line, format_path, html, name_key, typo_distance
+from bot.utils.text import clean_name, first_line, format_path, html, is_emoji, name_key, typo_distance
 
 
 def test_clean_name_drops_emoji_and_extra_spaces() -> None:
@@ -46,6 +46,11 @@ def test_typo_distance_counts_added_removed_replaced_and_swapped_letters() -> No
     assert typo_distance("fimans", "finans") == 1
     assert typo_distance("fianns", "finans") == 1  # neighbours swapped
     assert typo_distance("kassa", "ombor") == 5
+
+
+def test_is_emoji_accepts_emoji_and_nothing_else() -> None:
+    assert all(is_emoji(sample) for sample in ["📦", "🖨️", "👨‍💻", "🇺🇿", "☎️"])
+    assert not any(is_emoji(sample) for sample in ["", "Ombor", "📦 Ombor", "1", "📦" * 17])
 
 
 def test_html_escapes_markup() -> None:

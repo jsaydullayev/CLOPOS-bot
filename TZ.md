@@ -89,7 +89,7 @@ Xush kelibsiz! Kerakli bo‘limni tanlang.
 ### 4.3 Bo‘lim — ichki bo‘limlar ro‘yxati
 
 - Bo‘lim bosilganda faol xabar tahrirlanadi (yangi xabar yuborilmaydi).
-- Sarlavha — yo‘l: «Bo‘lim › Ichki bo‘lim». Yo‘l 60 belgidan uzun bo‘lsa, boshi «… ›» bilan qisqartiriladi. Sarlavha ostida admin yozgan bo‘lim matni chiqadi (5.7), yozilmagan bo‘lsa — hech narsa.
+- Sarlavha — bo‘lim emojisi va yo‘l: «💼 Bo‘lim › Ichki bo‘lim». Yo‘l 60 belgidan uzun bo‘lsa, boshi «… ›» bilan qisqartiriladi. Sarlavha ostida admin yozgan bo‘lim matni chiqadi (5.7), undan keyin qisqa yo‘l-yo‘riq: «👇 Kerakli bo‘limni tanlang:».
 - Har ichki bo‘lim — bitta tugma, faqat nomi; qatorda ikkitadan (4.2 dagi kabi). 8 tadan ko‘p bo‘lsa — sahifalash.
 - «⬅️ Orqaga» bir daraja yuqoriga, «🏠 Bosh menyu» bosh menyuga qaytaradi (asosiy bo‘limda faqat «⬅️ Orqaga»).
 
@@ -103,7 +103,7 @@ Bo‘lim nomi
 
 ### 4.4 Bo‘lim — videolar ro‘yxati
 
-- Sarlavha — yo‘l va bo‘lim matni (bo‘lsa). Videolar soni ko‘rsatilmaydi.
+- Sarlavha — bo‘lim emojisi, yo‘l va bo‘lim matni (bo‘lsa), so‘ng «🎬 Videoni tanlang — raqamini bosing:». Videolar soni ko‘rsatilmaydi. Video ochilganda nomi oldida ▶️.
 - Video nomlari xabar matnida raqami bilan ro‘yxat bo‘lib chiqadi: «1. Video nomi». Tugmalarda faqat raqam, qatorda to‘rttadan. Raqam bo‘limdagi tartibni bildiradi va sahifadan sahifaga davom etadi (2-sahifa 9 dan boshlanadi).
 - Sahifada 8 ta video. Ko‘p bo‘lsa pastda «◀️ 1/2 ▶️»; birinchi sahifada «◀️», oxirgisida «▶️» ko‘rinmaydi. «1/2» tugmasi hech narsa qilmaydi.
 - «⬅️ Orqaga» va «🏠 Bosh menyu» 4.3 dagi kabi ishlaydi.
@@ -128,7 +128,7 @@ Bo‘lim › Ichki bo‘lim
 - Video tanlanganda ro‘yxat xabarining o‘zi videoga aylanadi (`editMessageMedia`): xabar o‘chirilmaydi, yangisi yuborilmaydi.
 - Video ostida: nomi (qalin) va tavsif (bo‘lsa). Yo‘l va tartib raqami ko‘rsatilmaydi.
 - «◀️ Oldingi» / «Keyingi ▶️» shu bo‘lim videolarini o‘sha xabarning o‘zida almashtiradi (`editMessageMedia`). Birinchi videoda «Oldingi», oxirgisida «Keyingi» ko‘rinmaydi.
-- «⬅️ Orqaga» ro‘yxatni o‘sha xabarning o‘zida, **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova (salomlashuv rasmi yoki videosi) qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
+- «⬅️ Orqaga» ro‘yxatni o‘sha xabarning o‘zida, **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova rasm qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
 
 ```
 [ video ]
@@ -236,6 +236,7 @@ Mijoz ko‘radigan asosiy matnlarni admin bot ichida o‘zi yozadi — dasturchi
 | Matn | Qayerda o‘zgartiriladi | Mijoz qayerda ko‘radi |
 | --- | --- | --- |
 | Salomlashuv (rasm yoki video bilan ham bo‘ladi) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu (/start) |
+| Aloqa va havolalar (telefon, @username, linklar) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu pastidagi yashil «📞 Aloqa va foydali havolalar» tugmasi — admin yozgandan keyingina chiqadi |
 | Katalog bo‘sh bo‘lganda | Admin panel → «✏️ Salomlashuv va matnlar» | Botda hali video bo‘lmaganda, bosh menyuda |
 | Bo‘lim matni | Bo‘lim ichida → «✏️ Bo‘lim matni» | Bo‘limga kirganda, sarlavha ostida |
 
@@ -243,7 +244,7 @@ Mijoz ko‘radigan asosiy matnlarni admin bot ichida o‘zi yozadi — dasturchi
 - Admin yangi matnni oddiy xabar qilib yuboradi. Telegram formatlashi (qalin, kursiv, havola va h.k.) saqlanadi; premium (custom) emoji oddiy emojiga almashtiriladi.
 - Matn 1000 belgigacha (rasm izohiga sig‘ishi uchun). Matn bo‘lmagan xabar yoki uzun matn qabul qilinmaydi, bot sababini aytib qayta so‘raydi.
 - **Salomlashuv rasmi.** «🖼 Rasm qo‘yish» bosilgach admin rasm yuboradi: izoh (caption) bilan — rasm ham, matn ham yangilanadi; izohsiz — faqat rasm almashadi, matn qoladi. «✏️ Matnni o‘zgartirish» orqali matn o‘zgarsa, rasm qoladi. «🗑 Rasmni olib tashlash» faqat rasmni olib tashlaydi. Rasm bo‘lsa, bosh menyu rasm bo‘lib chiqadi: tagida salomlashuv matni va bo‘lim tugmalari. Bosh menyudan bo‘limga o‘tishda rasm xabari o‘chirilib, ro‘yxat yangi xabar bo‘lib chiqadi; videodan bosh menyuga qaytishda rasm shu xabarning o‘zida almashadi. Rasm yuborilmasa (masalan, bot almashib eski `file_id` ishlamasa), bosh menyu rasmsiz chiqadi — adminga rasmni qayta yuklash kifoya. Rasm faqat salomlashuvga qo‘yiladi; fayl sifatida yuborilgan rasm qabul qilinmaydi.
-- Ro‘yxatda o‘zgartirilgan matnlar «· o‘zgartirilgan» belgisi bilan chiqadi. «↩️ Standart holatga qaytarish» admin matnini va rasmini o‘chiradi, standart matn qaytadi; bo‘lim matni «🗑 Matnni olib tashlash» bilan olib tashlanadi.
+- Ro‘yxatda o‘zgartirilgan matnlar «· o‘zgartirilgan» belgisi bilan chiqadi. «↩️ Standart holatga qaytarish» admin matnini o‘chiradi va standart matn qaytadi, rasm yoki video joyida qoladi (uni «🗑 Rasm yoki videoni olib tashlash» olib tashlaydi); bo‘lim matni «🗑 Matnni olib tashlash» bilan olib tashlanadi.
 - Standart matnlar va tugma nomlari `locales/uz.toml` faylida turadi (dasturchi o‘zgartiradi).
 
 ## 6. Interfeys qoidalari
@@ -252,12 +253,12 @@ Bot mobil ilovadek ishlaydi: chatda bir vaqtda faqat bitta faol bot xabari turad
 
 - Faqat inline tugmalar. Pastki klaviatura ishlatilmaydi.
 - Ekrandan ekranga o‘tish — faol xabarni tahrirlash, jumladan ro‘yxatdan videoga o‘tish va qaytish ham: bitta kartochka, eski xabar o‘chirilmaydi.
-- Xabarda rasm yoki video paydo bo‘lgach, matnli ekranlar muqova ostida (caption) chiqadi. Muqova — salomlashuv rasmi yoki videosi, u qo‘yilmagan bo‘lsa — standart rasm (`assets/cover.png`). Muqova allaqachon turgan bo‘lsa, faqat matn va tugmalar almashadi.
+- Xabarda rasm yoki video paydo bo‘lgach, matnli ekranlar muqova ostida (caption) chiqadi. Muqova — salomlashuv rasmi; salomlashuvda video yoki GIF bo‘lsa yoki hech narsa qo‘yilmagan bo‘lsa — standart rasm (`assets/cover.png`). Salomlashuv videosi yoki GIF faqat bosh menyuda o‘ynaydi. Muqova allaqachon turgan bo‘lsa, faqat matn va tugmalar almashadi.
 - Yangi xabar faqat Telegram tahrirlashga yo‘l qo‘ymaganda yuboriladi: xabar 48 soatdan eski, matn rasm ostiga sig‘maydi (1024 belgidan uzun), yoki admin matnni mijoz ko‘radigandek rasmsiz ko‘rishi kerak.
 - Faol xabar id si bazada saqlanadi (`users.last_message_id`) — /start yoki matn kelganda eskisini topib o‘chirish uchun.
 - Bot 48 soatdan eski xabarni o‘chira olmaydi — bunday holda xato chiqmaydi, shunchaki yangi xabar yuboriladi.
 - Mijoz yuborgan xabarlar o‘chiriladi, chat toza qoladi.
-- Emoji faqat harakat tugmalarida (⬅️ ◀️ ▶️ 🏠, adminda ➕ ✅ ❌ 🗑 📂). Bo‘lim va video tugmalarida emoji yo‘q.
+- Harakat tugmalarida emoji bor (⬅️ ◀️ ▶️ 🏠, adminda ➕ ✅ ❌ 🗑 📂). Bo‘lim tugmasida nom oldida emoji: admin bo‘lim ichida «😀 Emoji» bilan tanlaydi, tanlanmagan bo‘lsa — 📂 (ichida bo‘limlar) yoki 🎬 (ichida videolar). Video tugmalarida faqat raqam.
 - Tugma bosilganda yuklanish belgisi darhol yo‘qoladi (`answerCallbackQuery`).
 - Tez ketma-ket bosishlar bitta foydalanuvchi uchun navbat bilan bajariladi (ikkita video yuborilmaydi). «message is not modified» xatosi e’tiborsiz qoldiriladi.
 - Barcha interfeys matnlari bitta til faylida saqlanadi — kodni o‘zgartirmasdan tahrirlanadi va keyinchalik boshqa tillar qo‘shilishiga tayyor.

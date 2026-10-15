@@ -12,11 +12,13 @@ from sqlalchemy import select
 
 from bot.db.models import Category, Video
 from bot.services.catalog import add_video, create_category
+from bot.texts import t
 from bot.ui.callbacks import (
     ADMIN_PANEL,
     AdminAddVideoCb,
     AdminCategoryCb,
     AdminDeleteCategoryCb,
+    AdminEmojiCb,
     AdminFlowCb,
     AdminNewCategoryCb,
     AdminPickCb,
@@ -25,6 +27,8 @@ from bot.ui.callbacks import (
     VideoCb,
 )
 from tests.conftest import ADMIN_ID, CHANNEL_ID, CLIENT_ID, Harness, file_id_of
+
+SOZLASH_LIST = "🎬 <b>Kassa › Sozlash</b>\n\n" + t("hint_videos") + "\n1. Printer\n2. Skaner"
 
 
 def last_text(harness: Harness) -> str:
@@ -75,7 +79,7 @@ async def test_client_with_empty_catalog(harness: Harness) -> None:
     start_id = await harness.send_text(CLIENT_ID, "/start")
 
     sent = harness.telegram.of(SendMessage)
-    assert [message.text for message in sent] == ["Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."]
+    assert [message.text for message in sent] == [t("main_menu_empty")]
     assert harness.telegram.of(DeleteMessage)[0].message_id == start_id
     assert await harness.active_message(CLIENT_ID) is not None
 
@@ -92,7 +96,7 @@ async def test_admin_builds_the_catalog(harness: Harness) -> None:
     await harness.press(ADMIN_ID, AdminNewCategoryCb())
     assert "Bo‘lim nomini yozing" in last_text(harness)
     await harness.send_text(ADMIN_ID, "🧾 Kassa")
-    assert "Kassa · bo‘sh" in button_texts(telegram.of(EditMessageText)[-1])
+    assert "🎬 Kassa · bo‘sh" in button_texts(telegram.of(EditMessageText)[-1])
 
     async with harness.session_factory() as session:
         kassa = await session.scalar(select(Category).where(Category.title == "Kassa"))
@@ -136,7 +140,7 @@ async def test_admin_builds_the_catalog(harness: Harness) -> None:
     await harness.send_text(ADMIN_ID, "USB kabel bilan")
     preview = telegram.of(EditMessageMedia)[-1]
     assert (preview.message_id, preview.media.media) == (dialog_id, file_id_of("v1"))
-    assert preview.media.caption == "<b>Printerni ulash</b>\nUSB kabel bilan"
+    assert preview.media.caption == "▶️ <b>Printerni ulash</b>\nUSB kabel bilan"
 
     telegram.reset()
     await harness.press(ADMIN_ID, AdminFlowCb(action="save"))
@@ -164,7 +168,7 @@ async def test_admin_builds_the_catalog(harness: Harness) -> None:
     await harness.send_video(ADMIN_ID, "v1")
     assert "Bu video allaqachon bor: «Printerni ulash»" in last_text(harness)
     await harness.press(ADMIN_ID, AdminFlowCb(action="cancel"))
-    assert last_text(harness) == "<b>Kassa › Sozlash</b>\n\n1. Printerni ulash"
+    assert last_text(harness) == "🎬 <b>Kassa › Sozlash</b>\n\n1. Printerni ulash"  # the admin's view
 
 
 async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
@@ -173,14 +177,16 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
 
     await harness.send_text(CLIENT_ID, "/start")
     menu = telegram.of(SendMessage)[-1]
-    assert button_texts(menu) == ["Kassa", "Ombor"]
+    # Each section has an emoji by what it holds: sections 📂, videos 🎬.
+    assert button_texts(menu) == ["📂 Kassa", "🎬 Ombor"]
 
     await harness.press(CLIENT_ID, CategoryCb(id=ids["kassa"]))
-    assert last_text(harness) == "<b>Kassa</b>"
-    assert button_texts(telegram.of(EditMessageText)[-1]) == ["Sozlash", "⬅️ Orqaga"]
+    # Every section screen: its emoji and path, then a short line on what to do.
+    assert last_text(harness) == "📂 <b>Kassa</b>\n\n" + t("hint_sections")
+    assert button_texts(telegram.of(EditMessageText)[-1]) == ["🎬 Sozlash", "⬅️ Orqaga"]
 
     await harness.press(CLIENT_ID, CategoryCb(id=ids["sozlash"]))
-    assert last_text(harness) == "<b>Kassa › Sozlash</b>\n\n1. Printer\n2. Skaner"
+    assert last_text(harness) == SOZLASH_LIST
     assert button_texts(telegram.of(EditMessageText)[-1]) == ["1", "2", "⬅️ Orqaga", "🏠 Bosh menyu"]
     list_id = await harness.active_message(CLIENT_ID)
 
@@ -190,7 +196,7 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "EditMessageMedia"]
     video_message = telegram.of(EditMessageMedia)[-1]
     assert (video_message.message_id, video_message.media.media) == (list_id, file_id_of("a"))
-    assert video_message.media.caption == "<b>Printer</b>"
+    assert video_message.media.caption == "▶️ <b>Printer</b>"
     assert button_texts(video_message) == ["Keyingi ▶️", "⬅️ Orqaga", "🏠 Bosh menyu"]
 
     # A second tap on the same button does not send another video.
@@ -210,7 +216,7 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     assert [type(call).__name__ for call in telegram.calls] == ["AnswerCallbackQuery", "EditMessageMedia"]
     back = telegram.of(EditMessageMedia)[-1]
     assert (back.message_id, back.media.type) == (list_id, "photo")
-    assert back.media.caption == "<b>Kassa › Sozlash</b>\n\n1. Printer\n2. Skaner"
+    assert back.media.caption == SOZLASH_LIST
 
     # Further screens only change the caption under the photo.
     telegram.reset()
@@ -222,11 +228,32 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     telegram.reset()
     typed_id = await harness.send_text(CLIENT_ID, "salom")
     assert telegram.of(DeleteMessage)[0].message_id == typed_id
-    assert last_text(harness) == "Xush kelibsiz! Kerakli bo‘limni tanlang."
+    assert last_text(harness) == t("main_menu")
 
     await harness.press(CLIENT_ID, MenuCb())
     await harness.send_dice(CLIENT_ID)
-    assert last_text(harness) == "Xush kelibsiz! Kerakli bo‘limni tanlang."
+    assert last_text(harness) == t("main_menu")
+
+
+async def test_admin_gives_a_section_an_emoji(harness: Harness) -> None:
+    ids = await seed_catalog(harness)
+    await harness.send_text(ADMIN_ID, "/admin")
+    await harness.press(ADMIN_ID, AdminCategoryCb(id=ids["ombor"]))
+    await harness.press(ADMIN_ID, AdminEmojiCb(id=ids["ombor"]))
+    assert "Hozirgi: 🎬 (standart)" in last_text(harness)
+
+    await harness.send_text(ADMIN_ID, "📦 Ombor")
+    assert last_text(harness).startswith("⚠️ Bitta emoji yuboring")
+    await harness.send_text(ADMIN_ID, "📦")
+    assert last_text(harness) == "📦 <b>Ombor</b>\n\n1. Qoldiq"  # back in the section, with its new emoji
+
+    await harness.send_text(CLIENT_ID, "/start")
+    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["📂 Kassa", "📦 Ombor"]
+
+    # Back to the standard one.
+    await harness.press(ADMIN_ID, AdminEmojiCb(id=ids["ombor"], clear=True))
+    await harness.send_text(CLIENT_ID, "/start")
+    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["📂 Kassa", "🎬 Ombor"]
 
 
 async def test_client_cannot_open_the_admin_panel(harness: Harness) -> None:
@@ -235,7 +262,7 @@ async def test_client_cannot_open_the_admin_panel(harness: Harness) -> None:
 
     await harness.send_text(CLIENT_ID, "/admin")
     assert "Admin panel" not in last_text(harness)
-    assert last_text(harness) == "Xush kelibsiz! Kerakli bo‘limni tanlang."
+    assert last_text(harness) == t("main_menu")
 
     telegram.reset()
     await harness.press(CLIENT_ID, ADMIN_PANEL)
@@ -262,7 +289,7 @@ async def test_buttons_of_deleted_items(harness: Harness) -> None:
     harness.telegram.reset()
     await harness.press(CLIENT_ID, VideoCb(id=ids["b"]))
     assert toasts(harness) == ["Bu video o‘chirilgan"]
-    assert button_texts(harness.telegram.of(EditMessageMedia)[-1]) == ["Ombor"]
+    assert button_texts(harness.telegram.of(EditMessageMedia)[-1]) == ["🎬 Ombor"]
 
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=ids["kassa"]))

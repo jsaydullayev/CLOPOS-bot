@@ -9,13 +9,20 @@ from bot.services.tree import CatalogTree, CategoryNode
 
 async def load_tree(session: AsyncSession) -> CatalogTree:
     rows = await session.execute(
-        select(Category.id, Category.parent_id, Category.title, Category.depth, Category.position)
+        select(Category.id, Category.parent_id, Category.title, Category.depth, Category.position, Category.emoji)
     )
     counts = await session.execute(
         select(Video.category_id, func.count(Video.id)).group_by(Video.category_id)
     )
     nodes = [
-        CategoryNode(id=row.id, parent_id=row.parent_id, title=row.title, depth=row.depth, position=row.position)
+        CategoryNode(
+            id=row.id,
+            parent_id=row.parent_id,
+            title=row.title,
+            depth=row.depth,
+            position=row.position,
+            emoji=row.emoji,
+        )
         for row in rows
     ]
     return CatalogTree(nodes, dict(counts.tuples().all()))
@@ -110,8 +117,16 @@ async def remove_custom_media(session: AsyncSession, key: str) -> None:
     await session.flush()
 
 
-async def delete_custom_text(session: AsyncSession, key: str) -> None:
-    await session.execute(delete(BotText).where(BotText.key == key))
+async def reset_custom_text(session: AsyncSession, key: str) -> None:
+    """Back to the standard text; a photo or video the admin set stays."""
+    row = await session.get(BotText, key)
+    if row is None:
+        return
+    if row.media_file_id is None:
+        await session.delete(row)
+    else:
+        row.value = None
+    await session.flush()
 
 
 async def list_admins(session: AsyncSession) -> list[Admin]:

@@ -12,8 +12,10 @@ from bot.ui.callbacks import NOOP
 PAGE_SIZE = 8
 # Sections, menus and actions go two buttons per row.
 COLUMNS = 2
-# Every button is blue; Telegram apps that predate button styles show their default color.
+# Buttons are blue; Telegram apps that predate button styles show their default color.
 BUTTON_STYLE = ButtonStyle.PRIMARY
+# Green, for the one button that should stand out from the blue ones (contacts).
+ACCENT_STYLE = ButtonStyle.SUCCESS
 
 T = TypeVar("T")
 
@@ -49,11 +51,11 @@ class Screen:
         return self.media is not None
 
 
-def button(text: str, data: CallbackData | str) -> InlineKeyboardButton:
+def button(text: str, data: CallbackData | str, *, style: ButtonStyle = BUTTON_STYLE) -> InlineKeyboardButton:
     return InlineKeyboardButton(
         text=text,
         callback_data=data.pack() if isinstance(data, CallbackData) else data,
-        style=BUTTON_STYLE,
+        style=style,
     )
 
 

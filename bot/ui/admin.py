@@ -19,6 +19,7 @@ from bot.ui.callbacks import (
     AdminCategoryCb,
     AdminDeleteCategoryCb,
     AdminDeleteVideoCb,
+    AdminEmojiCb,
     AdminFlowCb,
     AdminIntroCb,
     AdminNewCategoryCb,
@@ -30,7 +31,15 @@ from bot.ui.callbacks import (
     AdminVideoCb,
     SectionCodesCb,
 )
-from bot.ui.client import attachment_media, section_header, video_caption, video_list, video_media
+from bot.ui.client import (
+    attachment_media,
+    section_emoji,
+    section_header,
+    section_label,
+    video_caption,
+    video_list,
+    video_media,
+)
 from bot.ui.screen import COLUMNS, PAGE_SIZE, Screen, button, grid, keyboard, page_row, paginate
 from bot.utils.text import format_path, html
 
@@ -148,6 +157,7 @@ def admin_category(
     if tree.can_add_video(node.id):
         actions.append(button(t("btn_new_video"), AdminAddVideoCb(category=node.id)))
     actions.append(button(t("btn_edit_intro"), AdminIntroCb(id=node.id)))
+    actions.append(button(t("btn_section_emoji"), AdminEmojiCb(id=node.id)))
     actions.append(button(t("btn_delete"), AdminDeleteCategoryCb(id=node.id)))
     rows += grid(actions, COLUMNS)
     rows.append([button(t("btn_back"), AdminCategoryCb(id=node.parent_id or 0))])
@@ -297,7 +307,15 @@ def prompt(
     return Screen(text=text, markup=keyboard(grid([*buttons, cancel_button], COLUMNS)))
 
 
+def emoji_prompt(tree: CatalogTree, node: CategoryNode, error: str | None = None) -> Screen:
+    current = node.emoji or t("emoji_standard", emoji=section_emoji(tree, node))
+    text = t("emoji_prompt", path=html(format_path(tree.path(node.id))), current=current)
+    buttons = [button(t("btn_clear_emoji"), AdminEmojiCb(id=node.id, clear=True))] if node.emoji else []
+    return prompt(f"{error}\n\n{text}" if error else text, buttons)
+
+
 def _category_label(tree: CatalogTree, node: CategoryNode) -> str:
+    """The client's label with the emoji; an empty section, hidden from clients, is marked."""
     if tree.total(node.id):
-        return node.title
-    return t("admin_category_button_empty", title=node.title)
+        return section_label(tree, node)
+    return t("admin_category_button_empty", emoji=section_emoji(tree, node), title=node.title)

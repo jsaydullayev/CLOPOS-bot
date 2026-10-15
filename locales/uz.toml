@@ -5,15 +5,40 @@
 
 # ── Mijoz tomoni ─────────────────────────────────────────────
 
-main_menu = "Xush kelibsiz! Kerakli bo‘limni tanlang."
-main_menu_empty = "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
-category_title = "<b>{path}</b>"
-# Video sonini ham ko‘rsatish uchun: "{title} · {count}"
-category_button = "{title}"
+# Admin bularni botda o‘zgartira oladi: /admin → «✏️ Salomlashuv va matnlar».
+main_menu = """👋 <b>Assalomu alaykum!</b>
+
+<b>CLOPOS</b> video yordamchisiga xush kelibsiz 🎬
+Bu yerda dasturda ishlashni oson o‘rgatadigan qisqa video darsliklar jamlangan.
+
+👇 <b>Kerakli bo‘limni tanlang:</b>"""
+main_menu_empty = """👋 <b>Assalomu alaykum!</b>
+
+<b>CLOPOS</b> video yordamchisiga xush kelibsiz 🎬
+⏳ Video darsliklar tez orada shu yerda paydo bo‘ladi."""
+# «📞 Aloqa» tugmasi ortidagi matn. Bu — namuna: mijoz tugmani admin o‘z matnini yozgandan keyingina ko‘radi.
+contacts = """📞 <b>Biz bilan bog‘laning</b>
+
+☎️ Telefon: +998 00 000 00 00
+💬 Telegram: @username
+📢 Kanal: @kanal
+🌐 Sayt: https://example.uz
+
+🕘 Ish vaqti: Dushanba–Shanba, 9:00–18:00"""
+btn_contacts = "📞 Aloqa va foydali havolalar"
+category_title = "{emoji} <b>{path}</b>"
+# Bo‘lim oynasida sarlavha va bo‘lim matni ostidagi qisqa yo‘l-yo‘riq
+hint_sections = "👇 Kerakli bo‘limni tanlang:"
+hint_videos = "🎬 Videoni tanlang — raqamini bosing:"
+# Bo‘lim tugmasi: emoji va nom. Video sonini ham ko‘rsatish uchun: "{emoji} {title} · {count}"
+category_button = "{emoji} {title}"
+# Admin emoji tanlamagan bo‘limlar: ichida bo‘limlar bor / ichida videolar bor
+emoji_sections = "📂"
+emoji_videos = "🎬"
 # Videolar ro‘yxati: nomlar xabar matnida, tugmalarda faqat raqam
 video_list_item = "{number}. {title}"
 video_number_button = "{number}"
-video_title = "<b>{title}</b>"
+video_title = "▶️ <b>{title}</b>"
 
 category_deleted = "Bu bo‘lim o‘chirilgan"
 category_empty = "Bu bo‘limda hozircha video yo‘q"
@@ -68,10 +93,12 @@ btn_change_media = "🖼 Rasm yoki videoni almashtirish"
 texts_title = "<b>✏️ Salomlashuv va matnlar</b>\nMijoz ko‘radigan matnlar. Birini tanlang — bot uni mijoz ko‘radigandek ko‘rsatadi, tagida o‘zgartirish tugmalari bo‘ladi.\nBo‘lim matni «📂 Bo‘limlar»da, har bir bo‘lim ichida o‘zgartiriladi."
 text_preview_title = "<b>{label}</b> — mijoz shunday ko‘radi:"
 text_prompt = "<b>{label}</b>\nYangi matnni yuboring ({max} belgigacha). Qalin, kursiv, havola kabi formatlash saqlanadi."
-media_prompt = "<b>{label}</b>\nRasm yoki videoni yuboring (fayl sifatida emas, oddiy rasm yoki video qilib).\nIzoh (caption) yozsangiz, u yangi matn bo‘ladi; yozmasangiz, matn o‘zgarmaydi."
+media_prompt = "<b>{label}</b>\nRasm yoki videoni yuboring (fayl sifatida emas, oddiy rasm yoki video qilib).\nIzoh (caption) yozsangiz, u yangi matn bo‘ladi; yozmasangiz, matn o‘zgarmaydi.\n\n🎞 Video GIF bo‘lib — ovozsiz, o‘zi takrorlanib — tursin desangiz, yuborishdan oldin Telegram’da uning ovozini o‘chiring (🔇)."
 error_expected_media = "⚠️ Rasm yoki video kutilmoqda."
 text_label_main_menu = "Salomlashuv (bosh menyu)"
 text_label_main_menu_empty = "Katalog bo‘sh bo‘lganda"
+text_label_contacts = "📞 Aloqa va havolalar"
+contacts_not_written = "ℹ️ Hali yozilmagan: mijozlarga «📞 Aloqa» tugmasi ko‘rinmaydi. Pastdagi namunani o‘zingiznikiga almashtirib, «✏️ Matnni o‘zgartirish» orqali yuboring. Telefon, @username va linklar mijozga bosiladigan bo‘lib chiqadi."
 text_label_customized = "{label} · o‘zgartirilgan"
 btn_remove_media = "🗑 Rasm yoki videoni olib tashlash"
 text_saved = "✅ «{label}» saqlandi."
@@ -87,7 +114,12 @@ admin_root = "<b>📂 Bo‘limlar</b>"
 admin_root_empty = "<b>📂 Bo‘limlar</b>\nHali birorta bo‘lim yo‘q."
 admin_empty_note = "Bo‘lim bo‘sh."
 # Bo‘sh bo‘lim (ichida birorta video yo‘q) mijozlarga ko‘rinmaydi — admin buni belgidan biladi.
-admin_category_button_empty = "{title} · bo‘sh"
+admin_category_button_empty = "{emoji} {title} · bo‘sh"
+btn_section_emoji = "😀 Emoji"
+emoji_prompt = "<b>{path}</b> — bo‘lim emojisi\nMijoz uni bo‘lim tugmasida nom oldida ko‘radi. Hozirgi: {current}\n\nBitta emoji yuboring, masalan 💼, 🖨 yoki 💳."
+emoji_standard = "{emoji} (standart)"
+btn_clear_emoji = "↩️ Standart emoji"
+error_expected_emoji = "⚠️ Bitta emoji yuboring — matnsiz."
 
 btn_new_category = "➕ Bo‘lim"
 btn_new_subcategory = "➕ Ichki bo‘lim"

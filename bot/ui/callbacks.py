@@ -4,6 +4,7 @@ so buttons keep working after the bot restarts."""
 from aiogram.filters.callback_data import CallbackData
 
 NOOP = "x"
+CONTACTS = "ct"
 ADMIN_PANEL = "ap"
 CHANNEL_GUIDE = "ag"
 ADMINS = "al"
@@ -73,6 +74,13 @@ class AdminTextEditCb(CallbackData, prefix="ae"):
 class AdminTextResetCb(CallbackData, prefix="ar"):
     key: str
     media: bool = False  # True: remove only the photo or video
+
+
+class AdminEmojiCb(CallbackData, prefix="ay"):
+    """Setting a section's emoji (clear=True: back to the standard one)."""
+
+    id: int
+    clear: bool = False
 
 
 class AdminIntroCb(CallbackData, prefix="ai"):

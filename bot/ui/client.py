@@ -9,8 +9,19 @@ from bot.db.models import Video
 from bot.services.content import Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
-from bot.ui.callbacks import CategoryCb, MenuCb, VideoCb
-from bot.ui.screen import COLUMNS, PAGE_SIZE, Media, Screen, button, grid, keyboard, page_row, paginate
+from bot.ui.callbacks import CONTACTS, CategoryCb, MenuCb, VideoCb
+from bot.ui.screen import (
+    ACCENT_STYLE,
+    COLUMNS,
+    PAGE_SIZE,
+    Media,
+    Screen,
+    button,
+    grid,
+    keyboard,
+    page_row,
+    paginate,
+)
 from bot.utils.text import format_path, html
 
 # Video lists show titles in the text and only their numbers on the buttons.
@@ -24,19 +35,39 @@ def main_menu(
     greeting: str | None = None,
     empty_text: str | None = None,
     attachment: Attachment | None = None,
+    contacts: bool = False,
 ) -> Screen:
     """greeting and empty_text are the admin's texts (HTML), by default the ones from locales.
-    With a photo or video, the greeting becomes its caption."""
+    With a photo or video, the greeting becomes its caption. contacts: the admin has written
+    them, so the «📞 Aloqa» button goes at the bottom, on its own row and in green."""
+    contacts_row = [button(t("btn_contacts"), CONTACTS, style=ACCENT_STYLE)] if contacts else []
     categories = tree.visible_children(None)
     if not categories:
-        return Screen(text=empty_text or t("main_menu_empty"))
+        return Screen(text=empty_text or t("main_menu_empty"), markup=keyboard([contacts_row]))
     chunk, page, pages = paginate(categories, page)
     rows = grid([_category_button(tree, node) for node in chunk], COLUMNS)
     rows.append(page_row(page, pages, lambda p: MenuCb(page=p)))
+    rows.append(contacts_row)
     text = greeting or t("main_menu")
     if attachment is not None:
         return Screen(media=attachment_media(attachment, text), markup=keyboard(rows))
     return Screen(text=text, markup=keyboard(rows))
+
+
+def contacts_screen(text: str) -> Screen:
+    """The admin's contacts, links and usernames (HTML)."""
+    return Screen(text=text, markup=keyboard([[button(t("btn_back"), MenuCb())]]))
+
+
+def section_emoji(tree: CatalogTree, node: CategoryNode) -> str:
+    """The admin's emoji for the section, or one by what it holds: sections 📂, videos 🎬."""
+    if node.emoji:
+        return node.emoji
+    return t("emoji_sections") if tree.kind(node.id) is Kind.CATEGORIES else t("emoji_videos")
+
+
+def section_label(tree: CatalogTree, node: CategoryNode) -> str:
+    return t("category_button", emoji=section_emoji(tree, node), title=node.title, count=tree.total(node.id))
 
 
 def attachment_media(attachment: Attachment, caption: str) -> Media:
@@ -58,18 +89,18 @@ def category_screen(
     *,
     intro: str | None = None,
 ) -> Screen:
-    listing = ""
     if tree.kind(node.id) is Kind.CATEGORIES:
         chunk, page, pages = paginate(tree.visible_children(node.id), page)
         rows = grid([_category_button(tree, child) for child in chunk], COLUMNS)
+        # A short line on what to do here, under the admin's introduction.
+        guide = t("hint_sections")
     else:
         chunk_videos, page, pages = paginate(videos, page)
         listing, rows = video_list(chunk_videos, page * PAGE_SIZE, lambda video: VideoCb(id=video.id))
+        guide = t("hint_videos") + "\n" + listing
     rows.append(page_row(page, pages, lambda p: CategoryCb(id=node.id, page=p)))
     rows.append(_bottom_row(node))
-    text = section_header(tree, node.id, intro)
-    if listing:
-        text += "\n\n" + listing
+    text = section_header(tree, node.id, intro) + "\n\n" + guide
     return Screen(text=text, markup=keyboard(rows))
 
 
@@ -89,8 +120,10 @@ def video_list(
 
 
 def section_header(tree: CatalogTree, category_id: int, intro: str | None, note: str | None = None) -> str:
-    """The section path in bold, the admin's introduction, then a note (admins only)."""
-    text = t("category_title", path=html(format_path(tree.path(category_id))))
+    """The section's emoji and path in bold, the admin's introduction, then a note (admins only)."""
+    node = tree.get(category_id)
+    emoji = section_emoji(tree, node) if node is not None else ""
+    text = t("category_title", emoji=emoji, path=html(format_path(tree.path(category_id))))
     if intro:
         text += "\n" + intro
     if note:
@@ -135,7 +168,7 @@ def video_media(video: Video, caption: str) -> Media:
 
 
 def _category_button(tree: CatalogTree, node: CategoryNode) -> InlineKeyboardButton:
-    return button(t("category_button", title=node.title, count=tree.total(node.id)), CategoryCb(id=node.id))
+    return button(section_label(tree, node), CategoryCb(id=node.id))
 
 
 def _bottom_row(node: CategoryNode) -> list[InlineKeyboardButton]:

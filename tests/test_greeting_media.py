@@ -1,12 +1,15 @@
 """A photo or video on the greeting: set, changed, removed, and shown to clients."""
 
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.methods import DeleteMessage, EditMessageMedia, SendMessage, SendPhoto, SendVideo
-from aiogram.types import MessageEntity
+from aiogram.methods import DeleteMessage, EditMessageMedia, SendAnimation, SendMessage, SendPhoto, SendVideo
+from aiogram.types import Animation, FSInputFile, MessageEntity
 
 from bot.services.catalog import add_video, create_category
+from bot.texts import t
 from bot.ui.callbacks import AdminTextEditCb, AdminTextResetCb, AdminTextsCb, CategoryCb, MenuCb, VideoCb
 from tests.conftest import ADMIN_ID, CLIENT_ID, Harness, file_id_of
+
+FINANCE = "🎬 <b>Finance</b>\n\n" + t("hint_videos") + "\n1. Reports"
 
 
 def last_text(harness: Harness) -> str:
@@ -77,7 +80,7 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     menu = harness.telegram.of(SendPhoto)[-1]
     assert menu.photo == file_id_of("logo")  # the largest size
     assert menu.caption == "<b>Salom</b>! CLOPOS darslari"
-    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["Finance"]
+    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance"]
 
     # A new photo without a caption changes only the photo.
     await open_greeting(harness)
@@ -123,20 +126,27 @@ async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
     await harness.send_text(CLIENT_ID, "/start")
     menu = harness.telegram.of(SendVideo)[-1]
     assert (menu.video, menu.caption) == (file_id_of("promo"), "Xush kelibsiz!")
-    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["Finance"]
+    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance"]
 
-    # The list stays under the greeting video: only the caption changes.
+    # The greeting video plays on the main menu only: the section goes under the plain cover.
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
-    assert call_names(harness) == ["AnswerCallbackQuery", "EditMessageCaption"]
-    assert last_text(harness) == "<b>Finance</b>\n\n1. Reports"
+    cover = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (cover.type, cover.caption) == ("photo", FINANCE)
+    assert isinstance(cover.media, FSInputFile)  # assets/cover.png
 
-    # After a lesson, the greeting video comes back with the list under it.
+    # After a lesson, the list comes back under the cover as well.
     await harness.press(CLIENT_ID, VideoCb(id=video_id))
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
     back = harness.telegram.of(EditMessageMedia)[-1].media
-    assert (back.type, back.media, back.caption) == ("video", file_id_of("promo"), "<b>Finance</b>\n\n1. Reports")
+    assert (back.type, back.caption) == ("photo", FINANCE)
+
+    # The main menu brings the greeting video back, all in the same message.
+    harness.telegram.reset()
+    await harness.press(CLIENT_ID, MenuCb())
+    menu_again = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (menu_again.type, menu_again.media) == ("video", file_id_of("promo"))
     assert harness.telegram.of(DeleteMessage, SendMessage, SendVideo) == []
 
     # A photo replaces the video.
@@ -149,6 +159,24 @@ async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
     assert harness.telegram.of(SendPhoto)[-1].caption == "Xush kelibsiz!"
 
 
+async def test_a_muted_video_becomes_a_gif_and_resetting_the_text_keeps_it(harness: Harness) -> None:
+    await seed(harness)
+    await open_greeting(harness)
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    # Telegram turns a video sent without sound into an animation (GIF).
+    gif = Animation(file_id=file_id_of("gif"), file_unique_id="gif", width=1, height=1, duration=3)
+    await harness.send(ADMIN_ID, animation=gif, caption="Eski salom")
+    preview = harness.telegram.of(EditMessageMedia)[-1].media
+    assert (preview.type, preview.media, preview.caption) == ("animation", file_id_of("gif"), "Eski salom")
+
+    # The standard text comes back; the GIF stays.
+    await harness.press(ADMIN_ID, AdminTextResetCb(key="main_menu"))
+    harness.telegram.reset()
+    await harness.send_text(CLIENT_ID, "/start")
+    menu = harness.telegram.of(SendAnimation)[-1]
+    assert (menu.animation, menu.caption) == (file_id_of("gif"), t("main_menu"))
+
+
 async def test_photo_greeting_while_walking_the_catalog(harness: Harness) -> None:
     section_id, video_id = await seed(harness)
     await open_greeting(harness)
@@ -157,18 +185,18 @@ async def test_photo_greeting_while_walking_the_catalog(harness: Harness) -> Non
 
     await harness.send_text(CLIENT_ID, "/start")
 
-    # Photo -> text list: the photo stays, the list goes into its caption.
+    # Photo -> text list: a still photo stays, the list goes into its caption.
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
     assert call_names(harness) == ["AnswerCallbackQuery", "EditMessageCaption"]
-    assert last_text(harness) == "<b>Finance</b>\n\n1. Reports"
+    assert last_text(harness) == FINANCE
 
     # Video -> list: the greeting photo comes back in place of the video, with the list under it.
     await harness.press(CLIENT_ID, VideoCb(id=video_id))
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
     back = harness.telegram.of(EditMessageMedia)[-1].media
-    assert (back.type, back.media, back.caption) == ("photo", file_id_of("logo"), "<b>Finance</b>\n\n1. Reports")
+    assert (back.type, back.media, back.caption) == ("photo", file_id_of("logo"), FINANCE)
 
     # Video -> main menu: the photo replaces the video inside the same message.
     await harness.press(CLIENT_ID, VideoCb(id=video_id))

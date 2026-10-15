@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from bot.services.tree import CatalogTree, CategoryNode
+from bot.texts import t
 from bot.ui.admin import admin_category, admin_panel, confirm_delete_category, section_codes
 from bot.ui.callbacks import (
     AdminCategoryCb,
@@ -46,27 +47,46 @@ def flat_tree(categories: int, videos_each: int = 1) -> CatalogTree:
 
 def test_main_menu_lists_categories_with_counts() -> None:
     screen = main_menu(flat_tree(2, videos_each=5))
-    assert screen.text == "Xush kelibsiz! Kerakli bo‘limni tanlang."
-    assert texts(screen) == [["Bo‘lim 1", "Bo‘lim 2"]]
+    assert screen.text == t("main_menu")
+    assert texts(screen) == [["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"]]
 
 
 def test_main_menu_is_paginated_by_eight_in_two_columns() -> None:
     tree = flat_tree(9)
     first = main_menu(tree, page=0)
     assert texts(first) == [
-        ["Bo‘lim 1", "Bo‘lim 2"],
-        ["Bo‘lim 3", "Bo‘lim 4"],
-        ["Bo‘lim 5", "Bo‘lim 6"],
-        ["Bo‘lim 7", "Bo‘lim 8"],
+        ["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"],
+        ["🎬 Bo‘lim 3", "🎬 Bo‘lim 4"],
+        ["🎬 Bo‘lim 5", "🎬 Bo‘lim 6"],
+        ["🎬 Bo‘lim 7", "🎬 Bo‘lim 8"],
         ["1/2", "▶️"],
     ]
     last = main_menu(tree, page=1)
-    assert texts(last) == [["Bo‘lim 9"], ["◀️", "2/2"]]
+    assert texts(last) == [["🎬 Bo‘lim 9"], ["◀️", "2/2"]]
 
 
 def test_sections_go_two_per_row_even_when_few() -> None:
-    assert texts(main_menu(flat_tree(1))) == [["Bo‘lim 1"]]
-    assert texts(main_menu(flat_tree(3))) == [["Bo‘lim 1", "Bo‘lim 2"], ["Bo‘lim 3"]]
+    assert texts(main_menu(flat_tree(1))) == [["🎬 Bo‘lim 1"]]
+    assert texts(main_menu(flat_tree(3))) == [["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"], ["🎬 Bo‘lim 3"]]
+
+
+def test_section_buttons_carry_the_admins_emoji_or_one_by_what_they_hold() -> None:
+    nodes = [
+        CategoryNode(1, None, "Kassa", 1, 1),
+        CategoryNode(2, 1, "Sozlash", 2, 1),
+        CategoryNode(3, None, "Printerlar", 1, 2, emoji="🖨"),
+    ]
+    assert texts(main_menu(CatalogTree(nodes, {2: 1, 3: 1}))) == [["📂 Kassa", "🖨 Printerlar"]]
+
+
+def test_contacts_button_is_green_on_its_own_row_at_the_bottom() -> None:
+    screen = main_menu(flat_tree(9), contacts=True)
+    rows = screen.markup.inline_keyboard
+    assert [button.text for button in rows[-1]] == ["📞 Aloqa va foydali havolalar"]
+    assert rows[-1][0].style == "success"
+    assert [button.text for button in rows[-2]] == ["1/2", "▶️"]
+    # Even before the first video, clients can get in touch.
+    assert texts(main_menu(CatalogTree([], {}), contacts=True)) == [["📞 Aloqa va foydali havolalar"]]
 
 
 def test_every_button_is_blue() -> None:
@@ -97,7 +117,7 @@ def test_section_codes_are_paginated_in_list_order() -> None:
 
 def test_main_menu_without_videos() -> None:
     screen = main_menu(CatalogTree([CategoryNode(1, None, "Bo‘sh", 1, 1)], {}))
-    assert screen.text == "Xush kelibsiz! Hozircha videolar yo‘q — tez orada qo‘shiladi."
+    assert screen.text == t("main_menu_empty")
     assert screen.markup is None
 
 
@@ -105,12 +125,14 @@ def test_video_list_numbers_continue_across_pages() -> None:
     tree = CatalogTree([CategoryNode(1, None, "Kassa", 1, 1)], {1: 10})
     videos = [video(i) for i in range(1, 11)]
     first = category_screen(tree, tree.get(1), videos, page=0)
-    assert first.text == "<b>Kassa</b>\n\n" + "\n".join(f"{i}. Video {i}" for i in range(1, 9))
+    # The section's emoji and path, a short line on what to do, then the list.
+    pick = "🎬 <b>Kassa</b>\n\n" + t("hint_videos") + "\n"
+    assert first.text == pick + "\n".join(f"{i}. Video {i}" for i in range(1, 9))
     assert texts(first) == [["1", "2", "3", "4"], ["5", "6", "7", "8"], ["1/2", "▶️"], ["⬅️ Orqaga"]]
     assert datas(first)[0][0] == VideoCb(id=1).pack()
 
     screen = category_screen(tree, tree.get(1), videos, page=1)
-    assert screen.text == "<b>Kassa</b>\n\n9. Video 9\n10. Video 10"
+    assert screen.text == pick + "9. Video 9\n10. Video 10"
     assert texts(screen) == [["9", "10"], ["◀️", "2/2"], ["⬅️ Orqaga"]]
 
 
@@ -119,14 +141,14 @@ def test_video_titles_in_the_list_are_escaped() -> None:
     item = video(1)
     item.title = "A <b> & C"
     screen = category_screen(tree, tree.get(1), [item])
-    assert screen.text.endswith("\n\n1. A &lt;b&gt; &amp; C")
+    assert screen.text.endswith("\n1. A &lt;b&gt; &amp; C")
 
 
 def test_nested_category_has_back_and_home() -> None:
     nodes = [CategoryNode(1, None, "Kassa", 1, 1), CategoryNode(2, 1, "Sozlash", 2, 1)]
     tree = CatalogTree(nodes, {2: 1})
     screen = category_screen(tree, tree.get(2), [video(5, category_id=2)])
-    assert screen.text == "<b>Kassa › Sozlash</b>\n\n1. Video 5"
+    assert screen.text == "🎬 <b>Kassa › Sozlash</b>\n\n" + t("hint_videos") + "\n1. Video 5"
     assert datas(screen)[-1] == [CategoryCb(id=1).pack(), MenuCb().pack()]
 
 
@@ -137,7 +159,7 @@ def test_video_screen_hides_previous_on_first_and_next_on_last() -> None:
     first = video_screen(tree, videos[0], videos)
     assert texts(first)[0] == ["Keyingi ▶️"]
     assert first.media is not None
-    assert first.media.caption == "<b>Video 1</b>"
+    assert first.media.caption == "▶️ <b>Video 1</b>"
 
     last = video_screen(tree, videos[9], videos)
     assert texts(last)[0] == ["◀️ Oldingi"]
@@ -151,7 +173,7 @@ def test_video_caption_escapes_html() -> None:
     item.title = "Kassa & <printer>"
     item.description = "1 < 2"
     screen = video_screen(tree, item, [item])
-    assert screen.media.caption == "<b>Kassa &amp; &lt;printer&gt;</b>\n1 &lt; 2"
+    assert screen.media.caption == "▶️ <b>Kassa &amp; &lt;printer&gt;</b>\n1 &lt; 2"
 
 
 def test_admin_sees_empty_categories_and_add_buttons() -> None:
@@ -159,10 +181,15 @@ def test_admin_sees_empty_categories_and_add_buttons() -> None:
     tree = CatalogTree(nodes, {1: 3})
     root = admin_category(tree, None, [], 0, max_depth=3)
     assert root.text == "<b>📂 Bo‘limlar</b>"
-    assert texts(root) == [["Kassa", "Yangi · bo‘sh"], ["➕ Bo‘lim", "⬅️ Admin panel"]]
+    assert texts(root) == [["🎬 Kassa", "🎬 Yangi · bo‘sh"], ["➕ Bo‘lim", "⬅️ Admin panel"]]
 
     empty = admin_category(tree, 2, [], 0, max_depth=3)
-    assert texts(empty) == [["➕ Ichki bo‘lim", "➕ Video"], ["✏️ Bo‘lim matni", "🗑 O‘chirish"], ["⬅️ Orqaga"]]
+    assert texts(empty) == [
+        ["➕ Ichki bo‘lim", "➕ Video"],
+        ["✏️ Bo‘lim matni", "😀 Emoji"],
+        ["🗑 O‘chirish"],
+        ["⬅️ Orqaga"],
+    ]
     assert datas(empty)[0] == [AdminNewCategoryCb(parent=2).pack(), "av:2"]
     assert datas(empty)[-1] == [AdminCategoryCb(id=0).pack()]
 
