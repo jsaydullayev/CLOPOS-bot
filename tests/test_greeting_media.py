@@ -7,22 +7,10 @@ from aiogram.types import Animation, FSInputFile, MessageEntity
 from bot.services.catalog import add_video, create_category
 from bot.texts import t
 from bot.ui.callbacks import AdminTextEditCb, AdminTextResetCb, AdminTextsCb, CategoryCb, MenuCb, VideoCb
-from tests.conftest import ADMIN_ID, CLIENT_ID, Harness, file_id_of
+from tests.conftest import ADMIN_ID, CLIENT_ID, Harness, call_names, file_id_of, last_buttons, last_text
 
 FINANCE = "🎬 <b>Finance</b>\n\n" + t("hint_videos") + "\n1. Reports"
-
-
-def last_text(harness: Harness) -> str:
-    return harness.telegram.last_screen_text()
-
-
-def last_buttons(harness: Harness) -> list[str]:
-    method = harness.telegram.calls_with_markup()[-1]
-    return [button.text for row in method.reply_markup.inline_keyboard for button in row]
-
-
-def call_names(harness: Harness) -> list[str]:
-    return [type(call).__name__ for call in harness.telegram.calls]
+CONTACTS_BUTTON = "📞 Bog‘lanish va yordam"
 
 
 async def seed(harness: Harness) -> tuple[int, int]:
@@ -80,7 +68,7 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     menu = harness.telegram.of(SendPhoto)[-1]
     assert menu.photo == file_id_of("logo")  # the largest size
     assert menu.caption == "<b>Salom</b>! CLOPOS darslari"
-    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance"]
+    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance", CONTACTS_BUTTON]
 
     # A new photo without a caption changes only the photo.
     await open_greeting(harness)
@@ -126,7 +114,7 @@ async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
     await harness.send_text(CLIENT_ID, "/start")
     menu = harness.telegram.of(SendVideo)[-1]
     assert (menu.video, menu.caption) == (file_id_of("promo"), "Xush kelibsiz!")
-    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance"]
+    assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance", CONTACTS_BUTTON]
 
     # The greeting video plays on the main menu only: the section goes under the plain cover.
     harness.telegram.reset()

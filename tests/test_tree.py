@@ -20,8 +20,7 @@ def test_totals_count_videos_on_every_level() -> None:
     assert tree.total(1) == 2
     assert tree.total(2) == 2
     assert tree.total(4) == 0
-    assert tree.video_count == 3
-    assert tree.category_count == 6
+    assert tree.total(5) == 1
 
 
 def test_empty_categories_are_hidden_from_clients() -> None:

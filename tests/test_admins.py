@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from aiogram import Bot
-from aiogram.methods import AnswerCallbackQuery, DeleteMyCommands, SendMessage, SetMyCommands
+from aiogram.methods import DeleteMyCommands, SendMessage, SetMyCommands
 from aiogram.types import Contact, MessageOriginHiddenUser, MessageOriginUser
 from aiogram.types import User as TgUser
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,22 +14,9 @@ from bot.services.admins import Admins
 from bot.services.notify import Notifier
 from bot.texts import t
 from bot.ui.callbacks import ADD_ADMIN, ADMINS, AdminRemoveCb
-from tests.conftest import ADMIN_ID, CLIENT_ID, FakeTelegram, Harness
+from tests.conftest import ADMIN_ID, CLIENT_ID, FakeTelegram, Harness, last_buttons, last_text, toasts
 
 MENU = t("main_menu_empty")
-
-
-def last_text(harness: Harness) -> str:
-    return harness.telegram.last_screen_text()
-
-
-def last_buttons(harness: Harness) -> list[str]:
-    method = harness.telegram.calls_with_markup()[-1]
-    return [button.text for row in method.reply_markup.inline_keyboard for button in row]
-
-
-def toasts(harness: Harness) -> list[str | None]:
-    return [call.text for call in harness.telegram.of(AnswerCallbackQuery)]
 
 
 async def start_adding(harness: Harness) -> None:

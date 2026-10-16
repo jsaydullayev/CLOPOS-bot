@@ -27,7 +27,7 @@ from bot.ui.admin import admin_panel, admin_video, prompt
 from bot.ui.callbacks import AdminAddVideoCb, AdminCategoryCb, AdminDeleteVideoCb, AdminFlowCb, AdminVideoCb
 from bot.ui.client import video_caption
 from bot.ui.display import Display
-from bot.ui.screen import Media, Screen, button, keyboard
+from bot.ui.screen import Media, Screen, button, keyboard, with_notice
 from bot.utils.text import clean_name, first_line, format_path, html
 
 
@@ -41,10 +41,6 @@ class VideoForm(StatesGroup):
 
 def _path(tree: CatalogTree, category_id: int) -> str:
     return html(format_path(tree.path(category_id)))
-
-
-def _with_error(text: str, error: str | None) -> str:
-    return f"{error}\n\n{text}" if error else text
 
 
 async def _flow(session: AsyncSession, state: FSMContext) -> tuple[CatalogTree, int] | None:
@@ -73,7 +69,7 @@ async def _ask_video(
     source: MaybeInaccessibleMessageUnion | None = None,
 ) -> None:
     await state.set_state(VideoForm.video)
-    await display.show(user, prompt(_with_error(t("video_ask", path=_path(tree, category_id)), error)), source=source)
+    await display.show(user, prompt(with_notice(t("video_ask", path=_path(tree, category_id)), error)), source=source)
 
 
 async def _ask_title(
@@ -90,7 +86,7 @@ async def _ask_title(
     if (await state.get_data()).get("caption_title"):
         buttons.append(button(t("btn_from_caption"), AdminFlowCb(action="caption")))
     await state.set_state(VideoForm.title)
-    text = _with_error(t("video_ask_title", path=_path(tree, category_id)), error)
+    text = with_notice(t("video_ask_title", path=_path(tree, category_id)), error)
     await display.show(user, prompt(text, buttons), source=source)
 
 
@@ -105,7 +101,7 @@ async def _ask_description(
     source: MaybeInaccessibleMessageUnion | None = None,
 ) -> None:
     await state.set_state(VideoForm.description)
-    text = _with_error(t("video_ask_description", path=_path(tree, category_id)), error)
+    text = with_notice(t("video_ask_description", path=_path(tree, category_id)), error)
     await display.show(user, prompt(text, [button(t("btn_skip"), AdminFlowCb(action="skip"))]), source=source)
 
 

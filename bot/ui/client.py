@@ -9,7 +9,7 @@ from bot.db.models import Video
 from bot.services.content import Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
-from bot.ui.callbacks import CONTACTS, CategoryCb, MenuCb, VideoCb
+from bot.ui.callbacks import CONTACTS, WRITE_PROBLEM, CategoryCb, MenuCb, VideoCb
 from bot.ui.screen import (
     ACCENT_STYLE,
     COLUMNS,
@@ -21,6 +21,7 @@ from bot.ui.screen import (
     keyboard,
     page_row,
     paginate,
+    with_notice,
 )
 from bot.utils.text import format_path, html
 
@@ -35,12 +36,11 @@ def main_menu(
     greeting: str | None = None,
     empty_text: str | None = None,
     attachment: Attachment | None = None,
-    contacts: bool = False,
 ) -> Screen:
     """greeting and empty_text are the admin's texts (HTML), by default the ones from locales.
-    With a photo or video, the greeting becomes its caption. contacts: the admin has written
-    them, so the «📞 Aloqa» button goes at the bottom, on its own row and in green."""
-    contacts_row = [button(t("btn_contacts"), CONTACTS, style=ACCENT_STYLE)] if contacts else []
+    With a photo or video, the greeting becomes its caption. «📞 Bog‘lanish va yordam» is
+    always at the bottom, on its own row and in green."""
+    contacts_row = [button(t("btn_contacts"), CONTACTS, style=ACCENT_STYLE)]
     categories = tree.visible_children(None)
     if not categories:
         return Screen(text=empty_text or t("main_menu_empty"), markup=keyboard([contacts_row]))
@@ -54,9 +54,18 @@ def main_menu(
     return Screen(text=text, markup=keyboard(rows))
 
 
-def contacts_screen(text: str) -> Screen:
-    """The admin's contacts, links and usernames (HTML)."""
-    return Screen(text=text, markup=keyboard([[button(t("btn_back"), MenuCb())]]))
+def contacts_screen(contacts: str, notice: str | None = None) -> Screen:
+    """The contacts (HTML, the admin can change them) and a way to leave a problem for the admins."""
+    rows = [
+        [button(t("btn_write_problem"), WRITE_PROBLEM, style=ACCENT_STYLE)],
+        [button(t("btn_home"), MenuCb())],
+    ]
+    return Screen(text=with_notice(contacts, notice), markup=keyboard(rows))
+
+
+def problem_prompt(error: str | None = None) -> Screen:
+    cancel = [[button(t("btn_cancel"), CONTACTS)]]
+    return Screen(text=with_notice(t("problem_prompt"), error), markup=keyboard(cancel))
 
 
 def section_emoji(tree: CatalogTree, node: CategoryNode) -> str:

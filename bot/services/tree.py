@@ -41,14 +41,6 @@ class CatalogTree:
         self._direct = {category_id: count for category_id, count in video_counts.items() if count > 0}
         self._totals: dict[int, int] = {}
 
-    @property
-    def category_count(self) -> int:
-        return len(self._nodes)
-
-    @property
-    def video_count(self) -> int:
-        return sum(self._direct.values())
-
     def get(self, category_id: int | None) -> CategoryNode | None:
         return None if category_id is None else self._nodes.get(category_id)
 

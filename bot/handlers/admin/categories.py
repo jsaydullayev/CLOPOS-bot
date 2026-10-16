@@ -17,7 +17,7 @@ from bot.texts import t
 from bot.ui.admin import confirm_delete_category, emoji_prompt, prompt
 from bot.ui.callbacks import AdminCategoryCb, AdminDeleteCategoryCb, AdminEmojiCb, AdminNewCategoryCb
 from bot.ui.display import Display
-from bot.ui.screen import Screen
+from bot.ui.screen import Screen, with_notice
 from bot.utils.text import format_path, html, is_emoji
 
 
@@ -34,7 +34,7 @@ def name_prompt(tree: CatalogTree, parent_id: int | None, error: str | None = No
         text = t("category_name_root")
     else:
         text = t("category_name_child", path=html(format_path(tree.path(parent_id))))
-    return prompt(f"{error}\n\n{text}" if error else text)
+    return prompt(with_notice(text, error))
 
 
 async def browse(

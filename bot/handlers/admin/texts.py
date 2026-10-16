@@ -13,7 +13,6 @@ from bot.handlers.admin.common import render_category
 from bot.handlers.common import NOT_COMMAND, answer, render_error
 from bot.services.catalog import CatalogError
 from bot.services.content import (
-    CONTACTS_TEXT,
     EDITABLE_TEXTS,
     MEDIA_TEXTS,
     attachment_for,
@@ -47,16 +46,12 @@ async def render_texts(session: AsyncSession, notice: str | None = None) -> Scre
 
 
 async def render_text_preview(session: AsyncSession, key: str, notice: str | None = None) -> Screen:
-    written = await is_written(session, key)
-    if key == CONTACTS_TEXT and not written and notice is None:
-        # The standard contacts are a template: clients do not see the button until they are written.
-        notice = t("contacts_not_written")
     return text_preview(
         key,
         _labels()[key],
         await text_for(session, key),
         await attachment_for(session, key),
-        customized=written,
+        customized=await is_written(session, key),
         media_allowed=key in MEDIA_TEXTS,
         notice=notice,
     )

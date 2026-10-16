@@ -5,6 +5,7 @@ from aiogram.filters.callback_data import CallbackData
 
 NOOP = "x"
 CONTACTS = "ct"
+WRITE_PROBLEM = "pw"
 ADMIN_PANEL = "ap"
 CHANNEL_GUIDE = "ag"
 ADMINS = "al"

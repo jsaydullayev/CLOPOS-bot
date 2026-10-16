@@ -10,22 +10,32 @@ main_menu = """👋 <b>Assalomu alaykum!</b>
 
 <b>CLOPOS</b> video yordamchisiga xush kelibsiz 🎬
 Bu yerda dasturda ishlashni oson o‘rgatadigan qisqa video darsliklar jamlangan.
+❓ Savol yoki muammo bo‘lsa — pastdagi «📞 Bog‘lanish va yordam» tugmasini bosing.
 
 👇 <b>Kerakli bo‘limni tanlang:</b>"""
 main_menu_empty = """👋 <b>Assalomu alaykum!</b>
 
 <b>CLOPOS</b> video yordamchisiga xush kelibsiz 🎬
-⏳ Video darsliklar tez orada shu yerda paydo bo‘ladi."""
-# «📞 Aloqa» tugmasi ortidagi matn. Bu — namuna: mijoz tugmani admin o‘z matnini yozgandan keyingina ko‘radi.
-contacts = """📞 <b>Biz bilan bog‘laning</b>
+⏳ Video darsliklar tez orada shu yerda paydo bo‘ladi.
+❓ Savol yoki muammo bo‘lsa — pastdagi «📞 Bog‘lanish va yordam» tugmasini bosing."""
+# «📞 Bog‘lanish va yordam» tugmasi ortidagi matn (admin botda o‘zgartira oladi)
+contacts = """📞 <b>Bog‘lanish va yordam</b>
 
-☎️ Telefon: +998 00 000 00 00
-💬 Telegram: @username
-📢 Kanal: @kanal
-🌐 Sayt: https://example.uz
+☎️ Telefon: +998 55 513 11 77
+💬 Telegram: @CloposYordam
 
-🕘 Ish vaqti: Dushanba–Shanba, 9:00–18:00"""
-btn_contacts = "📞 Aloqa va foydali havolalar"
+✍️ Muammoingizni shu yerda yozib qoldiring — mutaxassislarimiz tez orada siz bilan bog‘lanadi."""
+btn_contacts = "📞 Bog‘lanish va yordam"
+btn_write_problem = "✍️ Muammoni yozib qoldirish"
+problem_prompt = """✍️ <b>Muammoingizni yozing</b>
+
+Muammoni bitta xabarda batafsil yozing. Kerak bo‘lsa, rasm, video yoki ovozli xabar ham yuborishingiz mumkin.
+📱 Siz bilan bog‘lanishimiz uchun telefon raqamingizni ham qoldiring."""
+problem_sent = "✅ <b>Murojaatingiz yuborildi!</b> Mutaxassislarimiz tez orada siz bilan bog‘lanadi."
+problem_not_sent = "⚠️ Murojaatni hozir yuborib bo‘lmadi. Iltimos, quyidagi telefon yoki Telegram orqali bog‘laning."
+problem_too_soon = "⏳ Keyingi murojaatni {seconds} soniyadan keyin yuborishingiz mumkin."
+# Adminlarga keladigan murojaat sarlavhasi; mijoz xabari undan keyin nusxa bo‘lib keladi
+problem_header = "📩 <b>Yangi murojaat</b>\n👤 {who}\n🆔 <a href=\"tg://user?id={id}\">{id}</a> — profilni ochish"
 category_title = "{emoji} <b>{path}</b>"
 # Bo‘lim oynasida sarlavha va bo‘lim matni ostidagi qisqa yo‘l-yo‘riq
 hint_sections = "👇 Kerakli bo‘limni tanlang:"
@@ -97,8 +107,7 @@ media_prompt = "<b>{label}</b>\nRasm yoki videoni yuboring (fayl sifatida emas, 
 error_expected_media = "⚠️ Rasm yoki video kutilmoqda."
 text_label_main_menu = "Salomlashuv (bosh menyu)"
 text_label_main_menu_empty = "Katalog bo‘sh bo‘lganda"
-text_label_contacts = "📞 Aloqa va havolalar"
-contacts_not_written = "ℹ️ Hali yozilmagan: mijozlarga «📞 Aloqa» tugmasi ko‘rinmaydi. Pastdagi namunani o‘zingiznikiga almashtirib, «✏️ Matnni o‘zgartirish» orqali yuboring. Telefon, @username va linklar mijozga bosiladigan bo‘lib chiqadi."
+text_label_contacts = "📞 Bog‘lanish va yordam"
 text_label_customized = "{label} · o‘zgartirilgan"
 btn_remove_media = "🗑 Rasm yoki videoni olib tashlash"
 text_saved = "✅ «{label}» saqlandi."

@@ -46,9 +46,10 @@ class Screen:
         if (self.text is None) == (self.media is None):
             raise ValueError("A screen shows either text or media")
 
-    @property
-    def is_media(self) -> bool:
-        return self.media is not None
+
+def with_notice(text: str, notice: str | None) -> str:
+    """A notice (what just happened, or what went wrong) above a screen's text."""
+    return f"{notice}\n\n{text}" if notice else text
 
 
 def button(text: str, data: CallbackData | str, *, style: ButtonStyle = BUTTON_STYLE) -> InlineKeyboardButton:

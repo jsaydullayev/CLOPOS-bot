@@ -81,8 +81,8 @@ python -m bot
 ## 5. Matnlarni tahrirlash
 
 **Admin bot ichida o‘zi o‘zgartiradi:**
-- Salomlashuv (rasm, video yoki GIF bilan ham), «katalog bo‘sh» matni va «📞 Aloqa va havolalar» — `/admin` → «✏️ Salomlashuv va matnlar» → matnni tanlang. Bot uni mijoz ko‘radigandek ko‘rsatadi, tagida «✏️ Matnni o‘zgartirish», «🖼 Rasm yoki video qo‘yish», «🗑 Rasm yoki videoni olib tashlash», «↩️ Standart holatga qaytarish» tugmalari bo‘ladi. «↩️ Standart holatga qaytarish» faqat matnni tiklaydi, rasm yoki video joyida qoladi.
-- Aloqa — telefon, @username, linklar. Admin yozmaguncha mijozga ko‘rinmaydi; yozgach, bosh menyu pastida yashil «📞 Aloqa va foydali havolalar» tugmasi chiqadi.
+- Salomlashuv (rasm, video yoki GIF bilan ham), «katalog bo‘sh» matni va «📞 Bog‘lanish va yordam» — `/admin` → «✏️ Salomlashuv va matnlar» → matnni tanlang. Bot uni mijoz ko‘radigandek ko‘rsatadi, tagida «✏️ Matnni o‘zgartirish», «🖼 Rasm yoki video qo‘yish», «🗑 Rasm yoki videoni olib tashlash», «↩️ Standart holatga qaytarish» tugmalari bo‘ladi. «↩️ Standart holatga qaytarish» faqat matnni tiklaydi, rasm yoki video joyida qoladi.
+- Bog‘lanish va yordam — bosh menyu pastidagi yashil tugma. Ichida telefon va @username (standart: +998 55 513 11 77, @CloposYordam; admin o‘zgartira oladi) va «✍️ Muammoni yozib qoldirish»: mijoz muammosini matn, rasm, video yoki ovozli xabar bilan yozadi, bot uni barcha adminlarga mijozning ismi, @username’i va profil havolasi bilan yuboradi. Bir mijoz daqiqasiga bitta murojaat yubora oladi. Murojaat faqat botga /start bosgan adminlarga yetadi.
 - Bo‘lim emojisi — `/admin` → «📂 Bo‘limlar» → bo‘lim → «😀 Emoji». Tanlanmasa, 📂 (ichida bo‘limlar) yoki 🎬 (ichida videolar).
 - Salomlashuv videosi GIF bo‘lib (ovozsiz, o‘zi takrorlanib) tursin desangiz, uni Telegram’da ovozini o‘chirib (🔇) yuboring — Telegram ovozsiz videoni GIF qiladi.
 - Bo‘lim matni (mijoz bo‘limga kirganda ko‘radi) — `/admin` → «📂 Bo‘limlar» → bo‘lim → «✏️ Bo‘lim matni».
@@ -157,9 +157,12 @@ bot/
   app.py             dispatcher, middleware va routerlar
   config.py          .env sozlamalari
   db/                modellar, so‘rovlar, ulanish
-  handlers/          mijoz, admin (bo‘limlar, videolar, matnlar), video kanal postlari, qolgan xabarlar
-  services/          bo‘limlar daraxti va qoidalar, kanal postlari, admin matnlari, kanalga nusxa, baza zaxirasi
+  handlers/          mijoz, bog‘lanish va murojaatlar, admin (bo‘limlar, videolar, matnlar, adminlar),
+                     video kanal postlari, qolgan xabarlar
+  services/          bo‘limlar daraxti va qoidalar, kanal postlari, admin matnlari, adminlar ro‘yxati,
+                     murojaatlar, kanalga nusxa, baza zaxirasi
   ui/                ekranlar, tugmalar, bitta faol xabar (display.py)
+assets/cover.png     bo‘lim ekranlari uchun standart muqova
 locales/uz.toml      barcha matnlar
 migrations/          Alembic migratsiyalari
 scripts/             arxivdan tiklash

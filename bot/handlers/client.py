@@ -12,11 +12,11 @@ from bot.db.models import User
 from bot.handlers.common import answer
 from bot.services.admins import Admins
 from bot.services.commands import set_admin_commands
-from bot.services.content import CONTACTS_TEXT, attachment_for, is_written, text_for
+from bot.services.content import attachment_for, text_for
 from bot.services.tree import Kind
 from bot.texts import t
-from bot.ui.callbacks import CONTACTS, NOOP, CategoryCb, MenuCb, VideoCb
-from bot.ui.client import category_screen, contacts_screen, main_menu, video_screen
+from bot.ui.callbacks import NOOP, CategoryCb, MenuCb, VideoCb
+from bot.ui.client import category_screen, main_menu, video_screen
 from bot.ui.display import Display
 from bot.ui.screen import Screen
 
@@ -30,7 +30,6 @@ async def menu_screen(session: AsyncSession, page: int = 0) -> Screen:
         greeting=await text_for(session, "main_menu"),
         empty_text=await text_for(session, "main_menu_empty"),
         attachment=await attachment_for(session, "main_menu"),
-        contacts=await is_written(session, CONTACTS_TEXT),
     )
 
 
@@ -54,25 +53,32 @@ async def noop(callback: CallbackQuery) -> None:
     await answer(callback)
 
 
+# Moving to another screen ends a dialog left half done (a problem being written), so a
+# message typed later is not taken for its answer.
+
+
 async def open_menu(
-    callback: CallbackQuery, callback_data: MenuCb, session: AsyncSession, db_user: User, display: Display
+    callback: CallbackQuery,
+    callback_data: MenuCb,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
 ) -> None:
+    await state.clear()
     await answer(callback)
     await display.show(db_user, await menu_screen(session, callback_data.page), source=callback.message)
 
 
-async def open_contacts(callback: CallbackQuery, session: AsyncSession, db_user: User, display: Display) -> None:
-    await answer(callback)
-    if not await is_written(session, CONTACTS_TEXT):
-        # The admin has taken the contacts away since the button was shown.
-        await display.show(db_user, await menu_screen(session), source=callback.message)
-        return
-    await display.show(db_user, contacts_screen(await text_for(session, CONTACTS_TEXT)), source=callback.message)
-
-
 async def open_category(
-    callback: CallbackQuery, callback_data: CategoryCb, session: AsyncSession, db_user: User, display: Display
+    callback: CallbackQuery,
+    callback_data: CategoryCb,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
 ) -> None:
+    await state.clear()
     tree = await repo.load_tree(session)
     node = tree.get(callback_data.id)
     if node is None or tree.total(node.id) == 0:
@@ -88,9 +94,15 @@ async def open_category(
 
 
 async def open_video(
-    callback: CallbackQuery, callback_data: VideoCb, session: AsyncSession, db_user: User, display: Display
+    callback: CallbackQuery,
+    callback_data: VideoCb,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
 ) -> None:
     """Opens a video from the list, or switches Previous/Next inside the video message."""
+    await state.clear()
     video = await repo.get_video(session, callback_data.id)
     if video is None:
         await answer(callback, t("video_deleted"))
@@ -111,7 +123,6 @@ def create_router() -> Router:
     router.message.register(start, CommandStart())
     router.callback_query.register(noop, F.data == NOOP)
     router.callback_query.register(open_menu, MenuCb.filter())
-    router.callback_query.register(open_contacts, F.data == CONTACTS)
     router.callback_query.register(open_category, CategoryCb.filter())
     router.callback_query.register(open_video, VideoCb.filter())
     return router

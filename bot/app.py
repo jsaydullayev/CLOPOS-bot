@@ -11,8 +11,9 @@ from bot.middlewares import DbSessionMiddleware, StaleCallbackMiddleware, UserLo
 from bot.services.admins import Admins
 from bot.services.archive import ArchiveService
 from bot.services.background import Background
-from bot.services.content import Attachment, attachment_for
+from bot.services.content import attachment_for
 from bot.services.notify import Notifier
+from bot.services.support import SupportDesk
 from bot.ui.display import Display, ReplacedRegistry
 
 
@@ -27,12 +28,12 @@ def create_dispatcher(
     notifier = Notifier(bot, admins)
     registry = ReplacedRegistry()
 
-    async def greeting_photo() -> Attachment | None:
+    async def greeting_photo() -> str | None:
         # Text screens shown in place of a video go under the greeting photo, like the main menu.
         # A greeting video or GIF plays on the main menu only: elsewhere the plain cover is quieter.
         async with session_factory() as session:
             attachment = await attachment_for(session, "main_menu")
-        return attachment if attachment is not None and attachment.media_type == MEDIA_PHOTO else None
+        return attachment.file_id if attachment is not None and attachment.media_type == MEDIA_PHOTO else None
 
     dispatcher = Dispatcher(
         storage=MemoryStorage(),
@@ -42,6 +43,7 @@ def create_dispatcher(
         display=Display(bot, registry, protect_content=settings.protect_content, cover=greeting_photo),
         archive=ArchiveService(bot, session_factory, settings.backup_channel_id, notifier),
         notifier=notifier,
+        support=SupportDesk(bot, admins),
         background=Background(),
         engine=engine,
     )

@@ -236,7 +236,7 @@ Mijoz ko‘radigan asosiy matnlarni admin bot ichida o‘zi yozadi — dasturchi
 | Matn | Qayerda o‘zgartiriladi | Mijoz qayerda ko‘radi |
 | --- | --- | --- |
 | Salomlashuv (rasm yoki video bilan ham bo‘ladi) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu (/start) |
-| Aloqa va havolalar (telefon, @username, linklar) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu pastidagi yashil «📞 Aloqa va foydali havolalar» tugmasi — admin yozgandan keyingina chiqadi |
+| Bog‘lanish va yordam (telefon, @username, linklar) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu pastidagi yashil «📞 Bog‘lanish va yordam» tugmasi (doim). Ichida «✍️ Muammoni yozib qoldirish»: mijoz xabari (matn, rasm, video, ovoz) barcha adminlarga ismi va profil havolasi bilan nusxalanadi; daqiqasiga bitta murojaat |
 | Katalog bo‘sh bo‘lganda | Admin panel → «✏️ Salomlashuv va matnlar» | Botda hali video bo‘lmaganda, bosh menyuda |
 | Bo‘lim matni | Bo‘lim ichida → «✏️ Bo‘lim matni» | Bo‘limga kirganda, sarlavha ostida |
 

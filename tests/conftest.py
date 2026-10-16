@@ -11,6 +11,7 @@ from aiogram.client.session.base import BaseSession
 from aiogram.enums import ChatType, ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import (
+    AnswerCallbackQuery,
     DeleteMessage,
     EditMessageCaption,
     EditMessageMedia,
@@ -320,6 +321,31 @@ class Harness:
     async def active_message(self, user_id: int) -> int | None:
         async with self.session_factory() as session:
             return await session.scalar(select(User.last_message_id).where(User.id == user_id))
+
+
+# What the user sees, for the asserts.
+
+
+def button_texts(method: Any) -> list[str]:
+    """The buttons of a sent or edited message, row after row."""
+    return [button.text for row in method.reply_markup.inline_keyboard for button in row]
+
+
+def last_text(harness: Harness) -> str:
+    return harness.telegram.last_screen_text()
+
+
+def last_buttons(harness: Harness) -> list[str]:
+    return button_texts(harness.telegram.calls_with_markup()[-1])
+
+
+def toasts(harness: Harness) -> list[str | None]:
+    """The short notices shown on button taps (None: the tap was only acknowledged)."""
+    return [call.text for call in harness.telegram.of(AnswerCallbackQuery)]
+
+
+def call_names(harness: Harness) -> list[str]:
+    return [type(call).__name__ for call in harness.telegram.calls]
 
 
 @pytest.fixture

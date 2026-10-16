@@ -1,13 +1,6 @@
 """End-to-end: updates go through middlewares, filters and handlers to Bot API calls."""
 
-from aiogram.methods import (
-    AnswerCallbackQuery,
-    DeleteMessage,
-    EditMessageMedia,
-    EditMessageText,
-    SendMessage,
-    SendVideo,
-)
+from aiogram.methods import DeleteMessage, EditMessageMedia, EditMessageText, SendMessage, SendVideo
 from sqlalchemy import select
 
 from bot.db.models import Category, Video
@@ -26,22 +19,19 @@ from bot.ui.callbacks import (
     MenuCb,
     VideoCb,
 )
-from tests.conftest import ADMIN_ID, CHANNEL_ID, CLIENT_ID, Harness, file_id_of
+from tests.conftest import (
+    ADMIN_ID,
+    CHANNEL_ID,
+    CLIENT_ID,
+    Harness,
+    button_texts,
+    file_id_of,
+    last_text,
+    toasts,
+)
 
 SOZLASH_LIST = "🎬 <b>Kassa › Sozlash</b>\n\n" + t("hint_videos") + "\n1. Printer\n2. Skaner"
-
-
-def last_text(harness: Harness) -> str:
-    """Text of the last screen the bot sent or edited."""
-    return harness.telegram.last_screen_text()
-
-
-def button_texts(method: SendMessage | EditMessageText | SendVideo | EditMessageMedia) -> list[str]:
-    return [button.text for row in method.reply_markup.inline_keyboard for button in row]
-
-
-def toasts(harness: Harness) -> list[str | None]:
-    return [call.text for call in harness.telegram.of(AnswerCallbackQuery)]
+CONTACTS_BUTTON = "📞 Bog‘lanish va yordam"  # always at the bottom of the main menu
 
 
 async def seed_catalog(harness: Harness) -> dict[str, int]:
@@ -178,7 +168,7 @@ async def test_client_walks_to_a_video_and_back(harness: Harness) -> None:
     await harness.send_text(CLIENT_ID, "/start")
     menu = telegram.of(SendMessage)[-1]
     # Each section has an emoji by what it holds: sections 📂, videos 🎬.
-    assert button_texts(menu) == ["📂 Kassa", "🎬 Ombor"]
+    assert button_texts(menu) == ["📂 Kassa", "🎬 Ombor", CONTACTS_BUTTON]
 
     await harness.press(CLIENT_ID, CategoryCb(id=ids["kassa"]))
     # Every section screen: its emoji and path, then a short line on what to do.
@@ -248,12 +238,12 @@ async def test_admin_gives_a_section_an_emoji(harness: Harness) -> None:
     assert last_text(harness) == "📦 <b>Ombor</b>\n\n1. Qoldiq"  # back in the section, with its new emoji
 
     await harness.send_text(CLIENT_ID, "/start")
-    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["📂 Kassa", "📦 Ombor"]
+    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["📂 Kassa", "📦 Ombor", CONTACTS_BUTTON]
 
     # Back to the standard one.
     await harness.press(ADMIN_ID, AdminEmojiCb(id=ids["ombor"], clear=True))
     await harness.send_text(CLIENT_ID, "/start")
-    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["📂 Kassa", "🎬 Ombor"]
+    assert button_texts(harness.telegram.of(SendMessage)[-1]) == ["📂 Kassa", "🎬 Ombor", CONTACTS_BUTTON]
 
 
 async def test_client_cannot_open_the_admin_panel(harness: Harness) -> None:
@@ -289,7 +279,7 @@ async def test_buttons_of_deleted_items(harness: Harness) -> None:
     harness.telegram.reset()
     await harness.press(CLIENT_ID, VideoCb(id=ids["b"]))
     assert toasts(harness) == ["Bu video o‘chirilgan"]
-    assert button_texts(harness.telegram.of(EditMessageMedia)[-1]) == ["🎬 Ombor"]
+    assert button_texts(harness.telegram.of(EditMessageMedia)[-1]) == ["🎬 Ombor", CONTACTS_BUTTON]
 
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=ids["kassa"]))

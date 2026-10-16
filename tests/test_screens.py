@@ -16,6 +16,8 @@ from bot.ui.callbacks import (
 from bot.ui.client import category_screen, main_menu, video_screen
 from bot.ui.screen import Screen
 
+CONTACTS_ROW = ["📞 Bog‘lanish va yordam"]  # always the last row of the main menu
+
 
 def texts(screen: Screen) -> list[list[str]]:
     assert screen.markup is not None
@@ -48,7 +50,7 @@ def flat_tree(categories: int, videos_each: int = 1) -> CatalogTree:
 def test_main_menu_lists_categories_with_counts() -> None:
     screen = main_menu(flat_tree(2, videos_each=5))
     assert screen.text == t("main_menu")
-    assert texts(screen) == [["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"]]
+    assert texts(screen) == [["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"], CONTACTS_ROW]
 
 
 def test_main_menu_is_paginated_by_eight_in_two_columns() -> None:
@@ -60,14 +62,15 @@ def test_main_menu_is_paginated_by_eight_in_two_columns() -> None:
         ["🎬 Bo‘lim 5", "🎬 Bo‘lim 6"],
         ["🎬 Bo‘lim 7", "🎬 Bo‘lim 8"],
         ["1/2", "▶️"],
+        CONTACTS_ROW,
     ]
     last = main_menu(tree, page=1)
-    assert texts(last) == [["🎬 Bo‘lim 9"], ["◀️", "2/2"]]
+    assert texts(last) == [["🎬 Bo‘lim 9"], ["◀️", "2/2"], CONTACTS_ROW]
 
 
 def test_sections_go_two_per_row_even_when_few() -> None:
-    assert texts(main_menu(flat_tree(1))) == [["🎬 Bo‘lim 1"]]
-    assert texts(main_menu(flat_tree(3))) == [["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"], ["🎬 Bo‘lim 3"]]
+    assert texts(main_menu(flat_tree(1)))[:-1] == [["🎬 Bo‘lim 1"]]
+    assert texts(main_menu(flat_tree(3)))[:-1] == [["🎬 Bo‘lim 1", "🎬 Bo‘lim 2"], ["🎬 Bo‘lim 3"]]
 
 
 def test_section_buttons_carry_the_admins_emoji_or_one_by_what_they_hold() -> None:
@@ -76,22 +79,25 @@ def test_section_buttons_carry_the_admins_emoji_or_one_by_what_they_hold() -> No
         CategoryNode(2, 1, "Sozlash", 2, 1),
         CategoryNode(3, None, "Printerlar", 1, 2, emoji="🖨"),
     ]
-    assert texts(main_menu(CatalogTree(nodes, {2: 1, 3: 1}))) == [["📂 Kassa", "🖨 Printerlar"]]
+    assert texts(main_menu(CatalogTree(nodes, {2: 1, 3: 1})))[0] == ["📂 Kassa", "🖨 Printerlar"]
 
 
 def test_contacts_button_is_green_on_its_own_row_at_the_bottom() -> None:
-    screen = main_menu(flat_tree(9), contacts=True)
-    rows = screen.markup.inline_keyboard
-    assert [button.text for button in rows[-1]] == ["📞 Aloqa va foydali havolalar"]
-    assert rows[-1][0].style == "success"
-    assert [button.text for button in rows[-2]] == ["1/2", "▶️"]
+    rows = main_menu(flat_tree(9)).markup.inline_keyboard
+    assert [button.style for button in rows[-1]] == ["success"]
     # Even before the first video, clients can get in touch.
-    assert texts(main_menu(CatalogTree([], {}), contacts=True)) == [["📞 Aloqa va foydali havolalar"]]
+    assert texts(main_menu(CatalogTree([], {}))) == [CONTACTS_ROW]
 
 
-def test_every_button_is_blue() -> None:
+def test_every_other_button_is_blue() -> None:
     screens = [main_menu(flat_tree(9)), admin_category(flat_tree(2), 1, [], 0, max_depth=3)]
-    styles = [button.style for screen in screens for row in screen.markup.inline_keyboard for button in row]
+    styles = [
+        button.style
+        for screen in screens
+        for row in screen.markup.inline_keyboard
+        for button in row
+        if button.text != CONTACTS_ROW[0]
+    ]
     assert styles
     assert all(style == "primary" for style in styles)
 
@@ -118,7 +124,7 @@ def test_section_codes_are_paginated_in_list_order() -> None:
 def test_main_menu_without_videos() -> None:
     screen = main_menu(CatalogTree([CategoryNode(1, None, "Bo‘sh", 1, 1)], {}))
     assert screen.text == t("main_menu_empty")
-    assert screen.markup is None
+    assert texts(screen) == [CONTACTS_ROW]
 
 
 def test_video_list_numbers_continue_across_pages() -> None:

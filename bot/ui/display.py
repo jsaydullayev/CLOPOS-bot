@@ -2,9 +2,9 @@
 
 Moving between screens edits that one message, whatever the screens hold:
 a text list becomes a video in place (Telegram can add media to a text message),
-and a video becomes the cover with the list as its caption. A message with media
-cannot turn back into plain text, so a text screen on it goes under the cover:
-the greeting's photo or video, or assets/cover.png when the admin has not set one.
+and a video becomes the cover photo with the list as its caption. A message with
+media cannot turn back into plain text, so a text screen on it goes under a photo:
+the greeting photo, or assets/cover.png when the greeting has none (or a video).
 Only when Telegram cannot edit (a message older than 48 hours, a text too long for
 a caption) is a new message sent and the old one deleted.
 """
@@ -32,7 +32,6 @@ from aiogram.types import (
 )
 
 from bot.db.models import MEDIA_ANIMATION, MEDIA_PHOTO, MEDIA_VIDEO, User
-from bot.services.content import Attachment
 from bot.ui.screen import Media, Screen
 
 logger = logging.getLogger(__name__)
@@ -96,9 +95,9 @@ class Display:
         registry: ReplacedRegistry,
         *,
         protect_content: bool = False,
-        cover: Callable[[], Awaitable[Attachment | None]] | None = None,
+        cover: Callable[[], Awaitable[str | None]] | None = None,
     ) -> None:
-        """cover: loads the photo or video text screens go under once the message holds a video."""
+        """cover: loads the file_id of the photo text screens go under once the message holds a video."""
         self.bot = bot
         self.registry = registry
         self.protect_content = protect_content
@@ -168,13 +167,8 @@ class Display:
             if shown is not None and shown.media_type == MEDIA_PHOTO:
                 # The photo stays (the greeting or the cover), the text goes into its caption.
                 await self._edit_caption(chat_id, message_id, screen.text, screen.markup)
-                return message_id
-            cover = await self._load_cover() if self._load_cover is not None else None
-            if shown is not None and cover is not None and shown.unique_id == cover.file_unique_id:
-                # The greeting video is already there.
-                await self._edit_caption(chat_id, message_id, screen.text, screen.markup)
             else:
-                await self._edit_to_cover(chat_id, message_id, screen.text, screen.markup, cover)
+                await self._edit_to_cover(chat_id, message_id, screen.text, screen.markup)
             return message_id
         except TelegramBadRequest as error:
             if "not modified" in error.message.lower():
@@ -201,24 +195,16 @@ class Display:
         )
 
     async def _edit_to_cover(
-        self,
-        chat_id: int,
-        message_id: int,
-        caption: str,
-        markup: InlineKeyboardMarkup | None,
-        cover: Attachment | None,
+        self, chat_id: int, message_id: int, caption: str, markup: InlineKeyboardMarkup | None
     ) -> None:
-        """A video message cannot become text again: the text goes under the cover."""
-        if cover is not None:
-            media = _input_media(Media(cover.file_id, cover.media_type, caption, cover.file_unique_id))
-            await self._edit_media(chat_id, message_id, media, markup)
-            return
-        cover = self._default_cover_id or FSInputFile(DEFAULT_COVER)
+        """A video message cannot become text again: the text goes under the cover photo."""
+        greeting = await self._load_cover() if self._load_cover is not None else None
+        cover = greeting or self._default_cover_id or FSInputFile(DEFAULT_COVER)
         result = await self._edit_media(
             chat_id, message_id, InputMediaPhoto(media=cover, caption=caption, parse_mode=ParseMode.HTML), markup
         )
-        if isinstance(result, Message) and result.photo:
-            # Uploaded once; later edits reuse Telegram's copy.
+        if greeting is None and isinstance(result, Message) and result.photo:
+            # assets/cover.png is uploaded once; later edits reuse Telegram's copy.
             self._default_cover_id = result.photo[-1].file_id
 
     async def _send(self, chat_id: int, screen: Screen) -> Message:

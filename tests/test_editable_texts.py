@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from aiogram.enums import ChatType
-from aiogram.methods import EditMessageText, SendMessage
+from aiogram.methods import SendMessage
 from aiogram.types import Chat, Message, MessageEntity, Update
 from aiogram.types import User as TgUser
 
@@ -20,16 +20,7 @@ from bot.ui.callbacks import (
     AdminTextsCb,
     CategoryCb,
 )
-from tests.conftest import ADMIN_ID, CLIENT_ID, Harness, file_id_of
-
-
-def last_text(harness: Harness) -> str:
-    return harness.telegram.of(SendMessage, EditMessageText)[-1].text
-
-
-def button_texts(harness: Harness) -> list[str]:
-    method = harness.telegram.of(SendMessage, EditMessageText)[-1]
-    return [button.text for row in method.reply_markup.inline_keyboard for button in row]
+from tests.conftest import ADMIN_ID, CLIENT_ID, Harness, file_id_of, last_buttons, last_text
 
 
 async def send_formatted(harness: Harness, user_id: int, text: str, entities: list[MessageEntity]) -> None:
@@ -65,19 +56,19 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
     await seed(harness)
 
     await harness.send_text(ADMIN_ID, "/admin")
-    assert "✏️ Salomlashuv va matnlar" in button_texts(harness)
+    assert "✏️ Salomlashuv va matnlar" in last_buttons(harness)
     await harness.press(ADMIN_ID, AdminTextsCb())
-    assert button_texts(harness) == [
+    assert last_buttons(harness) == [
         "Salomlashuv (bosh menyu)",
         "Katalog bo‘sh bo‘lganda",
-        "📞 Aloqa va havolalar",
+        "📞 Bog‘lanish va yordam",
         "⬅️ Admin panel",
     ]
 
     # The greeting as the client sees it, with the edit buttons under it.
     await harness.press(ADMIN_ID, AdminTextsCb(key="main_menu"))
     assert last_text(harness) == "<b>Salomlashuv (bosh menyu)</b> — mijoz shunday ko‘radi:\n\n" + t("main_menu")
-    assert button_texts(harness) == ["✏️ Matnni o‘zgartirish", "🖼 Rasm yoki video qo‘yish", "⬅️ Orqaga"]
+    assert last_buttons(harness) == ["✏️ Matnni o‘zgartirish", "🖼 Rasm yoki video qo‘yish", "⬅️ Orqaga"]
 
     # Formatting the admin used is kept.
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu"))
@@ -89,7 +80,7 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
         "<b>Salomlashuv (bosh menyu)</b> — mijoz shunday ko‘radi:\n\n"
         "<b>Assalomu alaykum!</b> CLOPOS video darslariga xush kelibsiz."
     )
-    assert "↩️ Standart holatga qaytarish" in button_texts(harness)
+    assert "↩️ Standart holatga qaytarish" in last_buttons(harness)
 
     await harness.send_text(CLIENT_ID, "/start")
     assert last_text(harness) == "<b>Assalomu alaykum!</b> CLOPOS video darslariga xush kelibsiz."
@@ -97,7 +88,7 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
     # Back to the text from the locales file.
     await harness.send_text(ADMIN_ID, "/admin")
     await harness.press(ADMIN_ID, AdminTextsCb())
-    assert "Salomlashuv (bosh menyu) · o‘zgartirilgan" in button_texts(harness)
+    assert "Salomlashuv (bosh menyu) · o‘zgartirilgan" in last_buttons(harness)
     await harness.press(ADMIN_ID, AdminTextsCb(key="main_menu"))
     await harness.press(ADMIN_ID, AdminTextResetCb(key="main_menu"))
     assert last_text(harness).startswith("↩️ «Salomlashuv (bosh menyu)» standart holatga qaytdi.")
@@ -108,7 +99,7 @@ async def test_admin_changes_the_greeting(harness: Harness) -> None:
 async def test_text_is_checked_and_can_be_cancelled(harness: Harness) -> None:
     await harness.send_text(ADMIN_ID, "/admin")
     await harness.press(ADMIN_ID, AdminTextsCb(key="main_menu_empty"))
-    assert button_texts(harness) == ["✏️ Matnni o‘zgartirish", "⬅️ Orqaga"]  # no photo for this text
+    assert last_buttons(harness) == ["✏️ Matnni o‘zgartirish", "⬅️ Orqaga"]  # no photo for this text
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu_empty"))
 
     await harness.send_text(ADMIN_ID, "x" * 1001)
@@ -127,7 +118,7 @@ async def test_admin_writes_a_section_introduction(harness: Harness) -> None:
 
     await harness.send_text(ADMIN_ID, "/admin")
     await harness.press(ADMIN_ID, AdminCategoryCb(id=section_id))
-    assert "✏️ Bo‘lim matni" in button_texts(harness)
+    assert "✏️ Bo‘lim matni" in last_buttons(harness)
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id))
     assert "Hozirgi matn:\n— yo‘q —" in last_text(harness)
 
@@ -142,7 +133,7 @@ async def test_admin_writes_a_section_introduction(harness: Harness) -> None:
 
     # Removing the introduction.
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id))
-    assert "🗑 Matnni olib tashlash" in button_texts(harness)
+    assert "🗑 Matnni olib tashlash" in last_buttons(harness)
     await harness.press(ADMIN_ID, AdminIntroCb(id=section_id, clear=True))
     assert last_text(harness) == "🎬 <b>Finance</b>\n\n1. Reports"
 
@@ -157,31 +148,27 @@ async def test_clients_cannot_change_texts(harness: Harness) -> None:
     assert last_text(harness) == t("main_menu_empty")
 
 
-async def test_contacts_appear_once_the_admin_writes_them(harness: Harness) -> None:
+async def test_admin_changes_the_contacts(harness: Harness) -> None:
     await seed(harness)
-    await harness.send_text(CLIENT_ID, "/start")
-    assert button_texts(harness) == ["🎬 Finance"]  # nothing written yet: no contacts button
 
-    # The admin sees the template and a note that clients do not see it yet.
+    # Clients have the green button at the bottom from the start, with the standard contacts.
+    await harness.send_text(CLIENT_ID, "/start")
+    rows = harness.telegram.of(SendMessage)[-1].reply_markup.inline_keyboard
+    assert [[button.text for button in row] for row in rows] == [["🎬 Finance"], ["📞 Bog‘lanish va yordam"]]
+    assert (rows[0][0].style, rows[1][0].style) == ("primary", "success")
+    await harness.press(CLIENT_ID, CONTACTS)
+    assert "☎️ Telefon: +998 55 513 11 77\n💬 Telegram: @CloposYordam" in last_text(harness)
+
     await harness.send_text(ADMIN_ID, "/admin")
     await harness.press(ADMIN_ID, AdminTextsCb(key="contacts"))
-    assert last_text(harness).startswith("ℹ️ Hali yozilmagan: mijozlarga «📞 Aloqa» tugmasi ko‘rinmaydi.")
-    assert last_text(harness).endswith(t("contacts"))
     await harness.press(ADMIN_ID, AdminTextEditCb(key="contacts"))
     await harness.send_text(ADMIN_ID, "☎️ +998 90 123 45 67\n💬 @clopos_support")
 
-    # Clients get a green button at the bottom, on its own row.
-    await harness.send_text(CLIENT_ID, "/start")
-    menu = harness.telegram.of(SendMessage)[-1]
-    rows = menu.reply_markup.inline_keyboard
-    assert [[button.text for button in row] for row in rows] == [["🎬 Finance"], ["📞 Aloqa va foydali havolalar"]]
-    assert (rows[0][0].style, rows[1][0].style) == ("primary", "success")
-
     await harness.press(CLIENT_ID, CONTACTS)
     assert last_text(harness) == "☎️ +998 90 123 45 67\n💬 @clopos_support"
-    assert button_texts(harness) == ["⬅️ Orqaga"]
+    assert last_buttons(harness) == ["✍️ Muammoni yozib qoldirish", "🏠 Bosh menyu"]
 
-    # Back to the template: the button is gone again.
+    # Back to the standard contacts.
     await harness.press(ADMIN_ID, AdminTextResetCb(key="contacts"))
-    await harness.send_text(CLIENT_ID, "/start")
-    assert button_texts(harness) == ["🎬 Finance"]
+    await harness.press(CLIENT_ID, CONTACTS)
+    assert last_text(harness) == t("contacts")

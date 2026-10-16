@@ -40,7 +40,7 @@ from bot.ui.client import (
     video_list,
     video_media,
 )
-from bot.ui.screen import COLUMNS, PAGE_SIZE, Screen, button, grid, keyboard, page_row, paginate
+from bot.ui.screen import COLUMNS, PAGE_SIZE, Screen, button, grid, keyboard, page_row, paginate, with_notice
 from bot.utils.text import format_path, html
 
 # Full paths can be long: fewer lines per page keep the message under Telegram's 4096 characters.
@@ -78,7 +78,7 @@ def admins_screen(entries: Sequence[AdminEntry], notice: str | None = None) -> S
     ]
     rows = grid(removable, COLUMNS)
     rows.append([button(t("btn_add_admin"), ADD_ADMIN), button(t("btn_admin_panel"), ADMIN_PANEL)])
-    return Screen(text=f"{notice}\n\n{text}" if notice else text, markup=keyboard(rows))
+    return Screen(text=with_notice(text, notice), markup=keyboard(rows))
 
 
 def confirm_remove_admin(entry: AdminEntry) -> Screen:
@@ -92,8 +92,7 @@ def confirm_remove_admin(entry: AdminEntry) -> Screen:
 
 
 def add_admin_prompt(error: str | None = None) -> Screen:
-    text = t("admin_add_prompt")
-    return prompt(f"{error}\n\n{text}" if error else text, cancel=ADMINS)
+    return prompt(with_notice(t("admin_add_prompt"), error), cancel=ADMINS)
 
 
 def _shorten(name: str) -> str:
@@ -250,8 +249,7 @@ def texts_screen(labels: dict[str, str], customized: set[str], notice: str | Non
         shown = t("text_label_customized", label=label) if key in customized else label
         rows.append([button(shown, AdminTextsCb(key=key))])
     rows.append([button(t("btn_admin_panel"), ADMIN_PANEL)])
-    text = t("texts_title")
-    return Screen(text=f"{notice}\n\n{text}" if notice else text, markup=keyboard(rows))
+    return Screen(text=with_notice(t("texts_title"), notice), markup=keyboard(rows))
 
 
 def text_preview(
@@ -277,12 +275,12 @@ def text_preview(
     if attachment is not None:
         return Screen(media=attachment_media(attachment, text), markup=keyboard(rows))
     body = t("text_preview_title", label=html(label)) + "\n\n" + text
-    return Screen(text=f"{notice}\n\n{body}" if notice else body, markup=keyboard(rows), plain=True)
+    return Screen(text=with_notice(body, notice), markup=keyboard(rows), plain=True)
 
 
 def text_edit_prompt(label: str, *, media: bool, error: str | None = None) -> Screen:
     text = t("media_prompt" if media else "text_prompt", label=html(label), max=TEXT_MAX)
-    return prompt(f"{error}\n\n{text}" if error else text)
+    return prompt(with_notice(text, error))
 
 
 def intro_prompt(tree: CatalogTree, category_id: int, current: str | None, error: str | None = None) -> Screen:
@@ -293,7 +291,7 @@ def intro_prompt(tree: CatalogTree, category_id: int, current: str | None, error
         max=TEXT_MAX,
     )
     buttons = [button(t("btn_clear_intro"), AdminIntroCb(id=category_id, clear=True))] if current else []
-    return prompt(f"{error}\n\n{text}" if error else text, buttons)
+    return prompt(with_notice(text, error), buttons)
 
 
 def prompt(
@@ -311,7 +309,7 @@ def emoji_prompt(tree: CatalogTree, node: CategoryNode, error: str | None = None
     current = node.emoji or t("emoji_standard", emoji=section_emoji(tree, node))
     text = t("emoji_prompt", path=html(format_path(tree.path(node.id))), current=current)
     buttons = [button(t("btn_clear_emoji"), AdminEmojiCb(id=node.id, clear=True))] if node.emoji else []
-    return prompt(f"{error}\n\n{text}" if error else text, buttons)
+    return prompt(with_notice(text, error), buttons)
 
 
 def _category_label(tree: CatalogTree, node: CategoryNode) -> str:

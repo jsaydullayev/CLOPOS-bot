@@ -19,8 +19,7 @@ from bot.texts import t
 # Photo and video captions are limited to 1024 characters, so a text must fit under them.
 TEXT_MAX = 1000
 
-# Contacts, links and usernames behind the «📞 Aloqa» button. Clients see the button only once the
-# admin has written them: the standard text is a template with made-up numbers.
+# The phone, usernames and links behind the «📞 Bog‘lanish va yordam» button.
 CONTACTS_TEXT = "contacts"
 
 # Texts the admin can change in «✏️ Matnlar», with the text key of their label.
