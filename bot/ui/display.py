@@ -9,10 +9,7 @@ Only when Telegram cannot edit (a message older than 48 hours, a text too long f
 a caption) is a new message sent and the old one deleted.
 """
 
-import html
 import logging
-import re
-import time
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
@@ -33,6 +30,8 @@ from aiogram.types import (
 
 from bot.db.models import MEDIA_ANIMATION, MEDIA_PHOTO, MEDIA_VIDEO, User
 from bot.ui.screen import Media, Screen
+from bot.utils.recent import RecentKeys
+from bot.utils.text import visible_length
 
 logger = logging.getLogger(__name__)
 
@@ -41,33 +40,11 @@ REPLACED_TTL = 10.0
 # Telegram's limit for a photo or video caption.
 CAPTION_MAX = 1024
 DEFAULT_COVER = Path(__file__).resolve().parents[2] / "assets" / "cover.png"
-_TAG = re.compile(r"<[^>]+>")
 
 
-class ReplacedRegistry:
-    """Messages the bot replaced a moment ago, to ignore double clicks on them."""
-
-    def __init__(self, ttl: float = REPLACED_TTL) -> None:
-        self.ttl = ttl
-        self._replaced: dict[int, dict[int, float]] = {}
-
-    def mark(self, chat_id: int, message_id: int) -> None:
-        self._purge(chat_id)
-        self._replaced.setdefault(chat_id, {})[message_id] = time.monotonic()
-
-    def is_recent(self, chat_id: int, message_id: int) -> bool:
-        self._purge(chat_id)
-        return message_id in self._replaced.get(chat_id, {})
-
-    def _purge(self, chat_id: int) -> None:
-        messages = self._replaced.get(chat_id)
-        if not messages:
-            return
-        deadline = time.monotonic() - self.ttl
-        for message_id in [mid for mid, at in messages.items() if at < deadline]:
-            del messages[message_id]
-        if not messages:
-            del self._replaced[chat_id]
+def replaced_messages() -> RecentKeys:
+    """(chat_id, message_id) of messages the bot replaced a moment ago, to ignore double clicks on them."""
+    return RecentKeys(REPLACED_TTL)
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,11 +56,14 @@ class Shown:
 
 
 def shown_in(message: MaybeInaccessibleMessageUnion) -> Shown:
-    if getattr(message, "video", None) is not None:
+    """An inaccessible message (older than 48 hours) counts as text: editing it fails and a new one is sent."""
+    if not isinstance(message, Message):
+        return Shown()
+    if message.video is not None:
         return Shown(MEDIA_VIDEO, message.video.file_unique_id)
-    if getattr(message, "animation", None) is not None:
+    if message.animation is not None:
         return Shown(MEDIA_ANIMATION, message.animation.file_unique_id)
-    if getattr(message, "photo", None):
+    if message.photo:
         return Shown(MEDIA_PHOTO, message.photo[-1].file_unique_id)
     return Shown()
 
@@ -92,17 +72,26 @@ class Display:
     def __init__(
         self,
         bot: Bot,
-        registry: ReplacedRegistry,
+        replaced: RecentKeys,
         *,
         protect_content: bool = False,
         cover: Callable[[], Awaitable[str | None]] | None = None,
     ) -> None:
-        """cover: loads the file_id of the photo text screens go under once the message holds a video."""
+        """replaced: see replaced_messages(). cover: loads the file_id of the photo text screens
+        go under once the message holds a video. It is read once and kept until forget_cover()."""
         self.bot = bot
-        self.registry = registry
+        self.replaced = replaced
         self.protect_content = protect_content
         self._load_cover = cover
+        self._cover: str | None = None
+        self._cover_known = False
+        self._cover_version = 0  # a cover read while the greeting changed is not kept
         self._default_cover_id: str | None = None  # file_id of assets/cover.png once uploaded
+
+    def forget_cover(self) -> None:
+        """The greeting photo changed: it is read again when next needed. Call it after the commit."""
+        self._cover_known = False
+        self._cover_version += 1
 
     async def show(
         self,
@@ -135,7 +124,7 @@ class Display:
 
     async def delete(self, chat_id: int, message_id: int) -> None:
         """Delete quietly: messages older than 48 hours cannot be deleted."""
-        self.registry.mark(chat_id, message_id)
+        self.replaced.add((chat_id, message_id))
         with suppress(TelegramAPIError):
             await self.bot.delete_message(chat_id=chat_id, message_id=message_id)
 
@@ -143,7 +132,7 @@ class Display:
         """Turn the message into the screen. None when Telegram cannot; shown None: what it holds is unknown."""
         try:
             if screen.media is not None:
-                if shown is not None and shown.unique_id == screen.media.file_unique_id:
+                if shown is not None and shown.unique_id is not None and shown.unique_id == screen.media.file_unique_id:
                     # Same video or photo: only the caption and buttons change.
                     await self._edit_caption(chat_id, message_id, screen.media.caption, screen.markup)
                 else:
@@ -162,7 +151,7 @@ class Display:
                     # An unknown message without text holds media: the screen can still go in its caption.
                     if shown is not None or "no text" not in error.message.lower():
                         raise
-            if screen.plain or _caption_length(screen.text) > CAPTION_MAX:
+            if screen.plain or visible_length(screen.text) > CAPTION_MAX:
                 return None
             if shown is not None and shown.media_type == MEDIA_PHOTO:
                 # The photo stays (the greeting or the cover), the text goes into its caption.
@@ -198,7 +187,7 @@ class Display:
         self, chat_id: int, message_id: int, caption: str, markup: InlineKeyboardMarkup | None
     ) -> None:
         """A video message cannot become text again: the text goes under the cover photo."""
-        greeting = await self._load_cover() if self._load_cover is not None else None
+        greeting = await self._greeting_cover()
         cover = greeting or self._default_cover_id or FSInputFile(DEFAULT_COVER)
         result = await self._edit_media(
             chat_id, message_id, InputMediaPhoto(media=cover, caption=caption, parse_mode=ParseMode.HTML), markup
@@ -207,9 +196,19 @@ class Display:
             # assets/cover.png is uploaded once; later edits reuse Telegram's copy.
             self._default_cover_id = result.photo[-1].file_id
 
+    async def _greeting_cover(self) -> str | None:
+        if self._cover_known or self._load_cover is None:
+            return self._cover
+        version = self._cover_version
+        cover = await self._load_cover()
+        if version == self._cover_version:
+            self._cover, self._cover_known = cover, True
+        return cover
+
     async def _send(self, chat_id: int, screen: Screen) -> Message:
         # protect_content is set when a message is sent and stays through every edit.
         if screen.media is None:
+            assert screen.text is not None  # a screen holds either text or media
             return await self.bot.send_message(
                 chat_id=chat_id, text=screen.text, reply_markup=screen.markup, protect_content=self.protect_content
             )
@@ -252,11 +251,6 @@ class Display:
             reply_markup=markup,
             protect_content=self.protect_content,
         )
-
-
-def _caption_length(text: str) -> int:
-    """Characters Telegram counts in a caption: the visible text, without the HTML tags."""
-    return len(html.unescape(_TAG.sub("", text)))
 
 
 def _input_media(media: Media) -> InputMediaVideo | InputMediaAnimation | InputMediaPhoto:

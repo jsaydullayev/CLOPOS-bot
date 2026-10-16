@@ -68,7 +68,7 @@ async def restore_videos(
                 logger.warning("Video %s (%s) has no archive copy", video.id, video.title)
                 continue
             message = await forward(bot, chat_id, channel_id, video.backup_message_id)
-            media = message and (message.video or message.animation or message.document)
+            media = None if message is None else message.video or message.animation or message.document
             if message is None or media is None:
                 report.failed += 1
                 continue

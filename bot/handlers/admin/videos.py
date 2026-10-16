@@ -10,6 +10,7 @@ from bot.config import Settings
 from bot.db import repo
 from bot.db.models import MEDIA_ANIMATION, MEDIA_VIDEO, User
 from bot.handlers.admin.common import render_category
+from bot.handlers.admin.panel import render_panel
 from bot.handlers.admin.texts import render_text_preview
 from bot.handlers.common import NOT_COMMAND, answer, render_error
 from bot.services.archive import ArchiveService
@@ -23,7 +24,7 @@ from bot.services.catalog import (
 )
 from bot.services.tree import CatalogTree
 from bot.texts import t
-from bot.ui.admin import admin_panel, admin_video, prompt
+from bot.ui.admin import admin_video, prompt
 from bot.ui.callbacks import AdminAddVideoCb, AdminCategoryCb, AdminDeleteVideoCb, AdminFlowCb, AdminVideoCb
 from bot.ui.client import video_caption
 from bot.ui.display import Display
@@ -170,6 +171,7 @@ async def receive_video(
 
     # A silent video may arrive as an animation (GIF); it is accepted as well.
     media = message.video or message.animation
+    assert media is not None  # the handler's filter: F.video | F.animation
     await state.update_data(
         file_id=media.file_id,
         file_unique_id=media.file_unique_id,
@@ -416,11 +418,13 @@ async def cancel_flow(
     await display.show(db_user, await render_category(session, settings, category_id), source=callback.message)
 
 
-async def flow_expired(callback: CallbackQuery, state: FSMContext, db_user: User, display: Display) -> None:
+async def flow_expired(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, db_user: User, display: Display
+) -> None:
     """A dialog button from a dialog that no longer runs (for example after a restart)."""
     await state.clear()
     await answer(callback, t("flow_expired"))
-    await display.show(db_user, admin_panel(), source=callback.message)
+    await display.show(db_user, await render_panel(session), source=callback.message)
 
 
 async def show_video(
@@ -463,9 +467,8 @@ async def _show_admin_video(
         await display.show(user, await render_category(session, settings, None), source=callback.message)
         return
     await answer(callback)
-    tree = await repo.load_tree(session)
-    siblings = await repo.list_videos(session, video.category_id)
-    await display.show(user, admin_video(tree, video, siblings, confirm=confirm), source=callback.message)
+    ids = await repo.video_ids(session, video.category_id)
+    await display.show(user, admin_video(video, ids, confirm=confirm), source=callback.message)
 
 
 async def delete_video_confirmed(

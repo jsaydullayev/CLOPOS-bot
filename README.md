@@ -31,6 +31,7 @@ cp .env.example .env
 | `BOT_TOKEN` | ha | @BotFather bergan token |
 | `ADMIN_IDS` | ha | Asosiy adminlar ID si, vergul bilan: `111,222`. Boshqa adminlarni ular botning o‘zida qo‘shadi: `/admin` → «👥 Adminlar». Asosiy adminni paneldan olib tashlab bo‘lmaydi |
 | `BACKUP_CHANNEL_ID` | ha | Video kanal ID si (`-100…`) |
+| `SUPPORT_CHANNEL_ID` | yo‘q | Murojaatlar kanali ID si (`-100…`). Bot u yerda xabar yuborish va tahrirlash huquqli admin bo‘lsin. Berilmasa, adminlarga qisqa xabar boradi, murojaatlar admin panelda turadi |
 | `WEBHOOK_URL` | webhookda | `https://DOMEN/webhook`. Bo‘sh bo‘lsa bot polling rejimida ishlaydi |
 | `WEBHOOK_SECRET` | webhookda | Tasodifiy satr: lotin harflari, raqamlar, `_` va `-` |
 | `DOMAIN` | webhookda | Caddy HTTPS sertifikat oladigan domen |
@@ -112,6 +113,15 @@ Adminlar uchun to‘liq shablon botning o‘zida: `/admin` → «📢 Kanal shab
 - Videolarni bittadan tashlang: albomda caption faqat birinchi videoga tushadi.
 - Kanaldan post o‘chirilsa, video botda qoladi — uni `/admin` orqali o‘chiring.
 - Bot admin bo‘lishidan oldingi postlarni ko‘rmaydi — ularni kanalga qayta forward qiling.
+
+## 6.1. Murojaatlar
+
+Mijoz «📞 Bog‘lanish va yordam» → «✍️ Muammoni yozib qoldirish» orqali yozadi (matn, rasm, video, ovozli xabar yoki fayl; daqiqasiga bitta). Murojaat bazaga yoziladi va `SUPPORT_CHANNEL_ID` kanaliga tushadi: mijoz xabarining nusxasi va ostida kartochka — raqami, kim yozgani, vaqti, holati va tugmalar.
+
+- **«✍️ Javob berish»** botni shu murojaatda ochadi. Admin javob yozadi (matn, rasm, video, ovoz, fayl), bot uni mijozga sarlavha bilan yuboradi, kartochkada «💬 Javob berildi» chiqadi.
+- **«✅ Bajarildi» / «❌ Bajarilmadi»** — kanalda ham, botda ham. Javob yuborilmaguncha belgilab bo‘lmaydi.
+- **`/admin` → «📨 Murojaatlar»** — kunlik hisobot: nechta keldi (necha kishidan), nechtasiga javob berildi, nechtasi javobsiz, nechtasi bajarildi; «◀️ Oldingi kun» bilan o‘tgan kunlar. «⏳ Javob kutayotganlar» — hamma kunlarning javobsizlari, eng eskisi birinchi; har biriga kirib javob yoziladi. Tugmada javobsizlar soni turadi.
+- **`/admin` → «📈 Foydalanuvchilar»** — jami, bugun / 7 / 30 kunda faollar, bugun qo‘shilganlar va so‘nggi faollar ro‘yxati.
 
 ## 7. Zaxira va tiklash
 

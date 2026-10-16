@@ -1,11 +1,12 @@
 """Telegram notifications to admins about serious errors."""
 
 import logging
-import time
 from collections.abc import Iterable
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
+
+from bot.utils.recent import RecentKeys
 
 logger = logging.getLogger(__name__)
 
@@ -15,17 +16,14 @@ class Notifier:
         """admin_ids is read on every notice, so admins added in the panel get them too."""
         self.bot = bot
         self.admin_ids = admin_ids
-        self.cooldown = cooldown
-        self._sent_at: dict[str, float] = {}
+        self._sent = RecentKeys(cooldown)
 
     async def notify(self, text: str, *, key: str | None = None) -> None:
         """Send text to every admin; the same key is sent at most once per cooldown."""
         key = key or text
-        now = time.monotonic()
-        last = self._sent_at.get(key)
-        if last is not None and now - last < self.cooldown:
+        if key in self._sent:
             return
-        self._sent_at[key] = now
+        self._sent.add(key)
         for admin_id in sorted(self.admin_ids):
             try:
                 await self.bot.send_message(chat_id=admin_id, text=text)

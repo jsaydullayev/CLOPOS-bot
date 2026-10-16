@@ -21,6 +21,9 @@ class Settings(DatabaseSettings):
     # The owners: always admins. More admins are added in the admin panel (services/admins.py).
     admin_ids: Annotated[frozenset[int], NoDecode] = frozenset()
     backup_channel_id: int
+    # Where clients' problems go, with buttons to answer and mark them. Without it the admins
+    # get a short notice and find the problems in the admin panel.
+    support_channel_id: int | None = None
 
     webhook_url: str = ""
     webhook_secret: str = ""
@@ -51,4 +54,4 @@ class Settings(DatabaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore[call-arg]  # the values come from the environment and .env

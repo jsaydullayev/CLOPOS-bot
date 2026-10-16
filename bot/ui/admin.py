@@ -2,11 +2,14 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
+from zoneinfo import ZoneInfo
 
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton
 
-from bot.db.models import Video
+from bot.db.models import User, Video
+from bot.db.repo import UserCounts
 from bot.services.content import TEXT_MAX, Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
@@ -30,6 +33,8 @@ from bot.ui.callbacks import (
     AdminTextsCb,
     AdminVideoCb,
     SectionCodesCb,
+    SupportReportCb,
+    UsersCb,
 )
 from bot.ui.client import (
     attachment_media,
@@ -39,12 +44,27 @@ from bot.ui.client import (
     video_caption,
     video_list,
     video_media,
+    video_page,
 )
-from bot.ui.screen import COLUMNS, PAGE_SIZE, Screen, button, grid, keyboard, page_row, paginate, with_notice
-from bot.utils.text import format_path, html
+from bot.ui.screen import (
+    ACCENT_STYLE,
+    COLUMNS,
+    Screen,
+    button,
+    grid,
+    keyboard,
+    page_row,
+    paginate,
+    with_notice,
+)
+from bot.utils import clock
+from bot.utils.text import format_path, html, shorten
 
 # Full paths can be long: fewer lines per page keep the message under Telegram's 4096 characters.
 CODES_PAGE_SIZE = 15
+# A page of codes fits one message (4096 characters) however deep the sections go.
+CODES_PATH_MAX = 200
+USERS_PAGE_SIZE = 10
 # Longer names are cut on the remove buttons, which go two in a row.
 BUTTON_NAME_MAX = 24
 
@@ -56,8 +76,16 @@ class AdminEntry:
     owner: bool  # set in ADMIN_IDS (.env): cannot be removed in the panel
 
 
-def admin_panel() -> Screen:
+def admin_panel(waiting: int = 0) -> Screen:
+    """waiting: tickets nobody has answered yet, shown on «📨 Murojaatlar» (green while there are any)."""
+    support = (
+        button(t("btn_support_waiting", count=waiting), SupportReportCb(), style=ACCENT_STYLE)
+        if waiting
+        else button(t("btn_support"), SupportReportCb())
+    )
     buttons = [
+        support,
+        button(t("btn_users"), UsersCb()),
         button(t("btn_admin_categories"), AdminCategoryCb()),
         button(t("btn_admin_add_video"), AdminPickCb()),
         button(t("btn_admin_texts"), AdminTextsCb()),
@@ -67,12 +95,34 @@ def admin_panel() -> Screen:
     return Screen(text=t("admin_panel"), markup=keyboard(grid(buttons, COLUMNS)))
 
 
+def users_screen(counts: UserCounts, users: Sequence[User], page: int, pages: int, tz: ZoneInfo, today: date) -> Screen:
+    """«📈 Foydalanuvchilar»: how many use the bot, and who was active last."""
+    lines = [
+        t("users_title"),
+        "",
+        t("users_total", count=counts.total),
+        t("users_today", count=counts.today),
+        t("users_week", count=counts.week),
+        t("users_month", count=counts.month),
+        t("users_joined_today", count=counts.joined_today),
+    ]
+    if users:
+        lines += ["", t("users_recent")]
+    for number, user in enumerate(users, start=page * USERS_PAGE_SIZE + 1):
+        name = html(shorten(user.first_name or t("admin_name_id", id=user.id), BUTTON_NAME_MAX))
+        if user.username:
+            name += f" (@{html(user.username)})"
+        lines.append(t("users_item", number=number, name=name, time=clock.short_stamp(user.last_active_at, tz, today)))
+    rows = [page_row(page, pages, lambda p: UsersCb(page=p)), [button(t("btn_admin_panel"), ADMIN_PANEL)]]
+    return Screen(text="\n".join(lines), markup=keyboard(rows))
+
+
 def admins_screen(entries: Sequence[AdminEntry], notice: str | None = None) -> Screen:
     """Everyone who can open the admin panel; the ones added here have a remove button."""
     lines = [t("admins_owner_line" if entry.owner else "admins_line", name=html(entry.name)) for entry in entries]
     text = t("admins_title") + "\n\n" + "\n".join(lines)
     removable = [
-        button(t("btn_remove_admin", name=_shorten(entry.name)), AdminRemoveCb(user_id=entry.user_id))
+        button(t("btn_remove_admin", name=shorten(entry.name, BUTTON_NAME_MAX)), AdminRemoveCb(user_id=entry.user_id))
         for entry in entries
         if not entry.owner
     ]
@@ -95,10 +145,6 @@ def add_admin_prompt(error: str | None = None) -> Screen:
     return prompt(with_notice(t("admin_add_prompt"), error), cancel=ADMINS)
 
 
-def _shorten(name: str) -> str:
-    return name if len(name) <= BUTTON_NAME_MAX else name[: BUTTON_NAME_MAX - 1] + "…"
-
-
 def channel_guide() -> Screen:
     """How to post videos in the channel so they land in the right section."""
     rows = [[button(t("btn_section_codes"), SectionCodesCb()), button(t("btn_admin_panel"), ADMIN_PANEL)]]
@@ -112,7 +158,7 @@ def section_codes(tree: CatalogTree, page: int) -> Screen:
     for node in chunk:
         # Sections that hold sections take no videos: marked, so their code is used only with › +New.
         key = "section_code_parent" if tree.kind(node.id) is Kind.CATEGORIES else "section_code"
-        lines.append(t(key, code=node.id, path=html(format_path(tree.path(node.id), limit=None))))
+        lines.append(t(key, code=node.id, path=html(format_path(tree.path(node.id), limit=CODES_PATH_MAX))))
     text = t("section_codes_title") + "\n\n" + ("\n".join(lines) if lines else t("section_codes_empty"))
     rows = [page_row(page, pages, lambda p: SectionCodesCb(page=p)), [button(t("btn_back"), CHANNEL_GUIDE)]]
     return Screen(text=text, markup=keyboard(rows))
@@ -134,20 +180,20 @@ def admin_category(
 
     kind = tree.kind(node.id)
     rows: list[list[InlineKeyboardButton]] = []
-    listing = ""
-    note = None
+    text = section_header(tree, node.id, intro, t("admin_empty_note") if kind is Kind.EMPTY else None)
+    pages = 1
     if kind is Kind.CATEGORIES:
         children = tree.children(node.id)
         chunk, page, pages = paginate(children, page)
         rows += grid([button(_category_label(tree, child), AdminCategoryCb(id=child.id)) for child in chunk], COLUMNS)
     elif kind is Kind.VIDEOS:
-        # The same layout the client sees: titles in the text, numbers on the buttons.
-        chunk_videos, page, pages = paginate(videos, page)
-        listing, video_rows = video_list(chunk_videos, page * PAGE_SIZE, lambda video: AdminVideoCb(id=video.id))
+        # The same layout the client sees: every video in one message, titles in the text, numbers on the buttons.
+        text += "\n\n"
+        listing, video_rows, page, pages = video_list(
+            videos, page, lambda video: AdminVideoCb(id=video.id), above=text
+        )
+        text += listing
         rows += video_rows
-    else:
-        pages = 1
-        note = t("admin_empty_note")
     rows.append(page_row(page, pages, lambda p: AdminCategoryCb(id=node.id, page=p)))
 
     actions = []
@@ -160,9 +206,6 @@ def admin_category(
     actions.append(button(t("btn_delete"), AdminDeleteCategoryCb(id=node.id)))
     rows += grid(actions, COLUMNS)
     rows.append([button(t("btn_back"), AdminCategoryCb(id=node.parent_id or 0))])
-    text = section_header(tree, node.id, intro, note)
-    if listing:
-        text += "\n\n" + listing
     return Screen(text=text, markup=keyboard(rows))
 
 
@@ -224,9 +267,8 @@ def admin_pick(tree: CatalogTree, category_id: int | None, page: int) -> Screen:
     return Screen(text=text, markup=keyboard(rows))
 
 
-def admin_video(tree: CatalogTree, video: Video, siblings: Sequence[Video], *, confirm: bool = False) -> Screen:
-    ids = [sibling.id for sibling in siblings]
-    index = ids.index(video.id)
+def admin_video(video: Video, ids: Sequence[int], *, confirm: bool = False) -> Screen:
+    """ids: the section's videos in order, to come back to the list page with this one."""
     caption = video_caption(video.title, video.description)
     if confirm:
         caption += "\n\n" + t("video_delete_question")
@@ -237,7 +279,7 @@ def admin_video(tree: CatalogTree, video: Video, siblings: Sequence[Video], *, c
     else:
         row = [
             button(t("btn_delete"), AdminDeleteVideoCb(id=video.id)),
-            button(t("btn_back"), AdminCategoryCb(id=video.category_id, page=index // PAGE_SIZE)),
+            button(t("btn_back"), AdminCategoryCb(id=video.category_id, page=video_page(ids, video.id))),
         ]
     return Screen(media=video_media(video, caption), markup=keyboard([row]))
 
@@ -305,7 +347,9 @@ def prompt(
     return Screen(text=text, markup=keyboard(grid([*buttons, cancel_button], COLUMNS)))
 
 
-def emoji_prompt(tree: CatalogTree, node: CategoryNode, error: str | None = None) -> Screen:
+def emoji_prompt(tree: CatalogTree, category_id: int, error: str | None = None) -> Screen:
+    node = tree.get(category_id)
+    assert node is not None  # the handlers have just found the category
     current = node.emoji or t("emoji_standard", emoji=section_emoji(tree, node))
     text = t("emoji_prompt", path=html(format_path(tree.path(node.id))), current=current)
     buttons = [button(t("btn_clear_emoji"), AdminEmojiCb(id=node.id, clear=True))] if node.emoji else []

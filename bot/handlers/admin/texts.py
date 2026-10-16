@@ -41,6 +41,13 @@ def _labels() -> dict[str, str]:
     return {key: t(label_key) for key, label_key in EDITABLE_TEXTS.items()}
 
 
+async def _greeting_media_changed(session: AsyncSession, display: Display) -> None:
+    """Text screens over a video go under the greeting photo: the new one from now on.
+    Committed first, so the photo read next is the new one."""
+    await session.commit()
+    display.forget_cover()
+
+
 async def render_texts(session: AsyncSession, notice: str | None = None) -> Screen:
     return texts_screen(_labels(), await repo.custom_text_keys(session), notice)
 
@@ -100,6 +107,11 @@ async def receive_text(
     await display.delete(message.chat.id, message.message_id)
     data = await state.get_data()
     key, media_mode = data.get("text_key"), bool(data.get("media_mode"))
+    if not isinstance(key, str) or key not in EDITABLE_TEXTS:
+        # The dialog lost its data: back to the list instead of failing.
+        await state.clear()
+        await display.show(db_user, await render_texts(session))
+        return
     attachment = attachment_from_message(message)
     try:
         if attachment is None and is_media_file(message):
@@ -122,6 +134,8 @@ async def receive_text(
             (attachment.file_id, attachment.file_unique_id, attachment.media_type) if attachment is not None else None
         ),
     )
+    if attachment is not None:
+        await _greeting_media_changed(session, display)
     await state.clear()
     notice = t("text_saved", label=_labels()[key])
     await display.show(db_user, await render_text_preview(session, key, notice))
@@ -143,6 +157,7 @@ async def reset_text(
         return
     if callback_data.media:
         await repo.remove_custom_media(session, key)
+        await _greeting_media_changed(session, display)
         notice = t("text_media_removed", label=_labels()[key])
     else:
         await repo.reset_custom_text(session, key)

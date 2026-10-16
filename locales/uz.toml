@@ -27,15 +27,22 @@ contacts = """📞 <b>Bog‘lanish va yordam</b>
 ✍️ Muammoingizni shu yerda yozib qoldiring — mutaxassislarimiz tez orada siz bilan bog‘lanadi."""
 btn_contacts = "📞 Bog‘lanish va yordam"
 btn_write_problem = "✍️ Muammoni yozib qoldirish"
+# Birinchi murojaatdan oldin so‘raladi; bot raqamni eslab qoladi
+phone_prompt = """📱 <b>Telefon raqamingiz</b>
+
+Mutaxassislarimiz siz bilan bog‘lanishi uchun telefon raqamingizni yozing.
+Masalan: <code>+998 90 123 45 67</code>"""
+error_phone = "⚠️ Raqam noto‘g‘ri yozildi. Masalan: <code>+998 90 123 45 67</code> yoki <code>90 123 45 67</code>"
+btn_change_phone = "📱 Raqamni o‘zgartirish"
 problem_prompt = """✍️ <b>Muammoingizni yozing</b>
 
 Muammoni bitta xabarda batafsil yozing. Kerak bo‘lsa, rasm, video yoki ovozli xabar ham yuborishingiz mumkin.
-📱 Siz bilan bog‘lanishimiz uchun telefon raqamingizni ham qoldiring."""
-problem_sent = "✅ <b>Murojaatingiz yuborildi!</b> Mutaxassislarimiz tez orada siz bilan bog‘lanadi."
-problem_not_sent = "⚠️ Murojaatni hozir yuborib bo‘lmadi. Iltimos, quyidagi telefon yoki Telegram orqali bog‘laning."
+📱 Siz bilan shu raqam orqali bog‘lanamiz: <b>{phone}</b>"""
+problem_sent = "✅ <b>Murojaatingiz #{id} qabul qilindi!</b> Mutaxassislarimiz tez orada shu bot orqali javob yozadi."
 problem_too_soon = "⏳ Keyingi murojaatni {seconds} soniyadan keyin yuborishingiz mumkin."
-# Adminlarga keladigan murojaat sarlavhasi; mijoz xabari undan keyin nusxa bo‘lib keladi
-problem_header = "📩 <b>Yangi murojaat</b>\n👤 {who}\n🆔 <a href=\"tg://user?id={id}\">{id}</a> — profilni ochish"
+error_expected_message = "⚠️ Matn, rasm, video, ovozli xabar yoki fayl yuboring."
+# Admin javobi mijozga shu sarlavha bilan boradi, undan keyin javobning o‘zi
+reply_header = "💬 <b>CLOPOS yordam xizmati</b> — murojaatingiz #{id} bo‘yicha javob 👇"
 category_title = "{emoji} <b>{path}</b>"
 # Bo‘lim oynasida sarlavha va bo‘lim matni ostidagi qisqa yo‘l-yo‘riq
 hint_sections = "👇 Kerakli bo‘limni tanlang:"
@@ -74,6 +81,78 @@ btn_admin_panel = "⬅️ Admin panel"
 btn_admin_texts = "✏️ Salomlashuv va matnlar"
 btn_channel_guide = "📢 Kanal shabloni"
 btn_admins = "👥 Adminlar"
+btn_support = "📨 Murojaatlar"
+btn_support_waiting = "📨 Murojaatlar · {count}"
+btn_users = "📈 Foydalanuvchilar"
+
+# ── Murojaatlar: kanal kartochkasi va admin panel ────────────
+
+ticket_title = "📩 <b>Murojaat #{id}</b>"
+ticket_from = "👤 {who} · <a href=\"tg://user?id={id}\">profilni ochish</a>"
+ticket_phone = "📱 {phone}"
+ticket_time = "🕐 {time}"
+ticket_status_new = "⏳ <b>Javob kutilmoqda</b>"
+ticket_status_answered = "💬 <b>Javob berildi</b> — {admin}, {time} · {replies} ta javob"
+ticket_status_done = "✅ <b>Bajarildi</b> — {admin}, {time}"
+ticket_status_not_done = "❌ <b>Bajarilmadi</b> — {admin}, {time}"
+ticket_text = "<blockquote>{text}</blockquote>"
+ticket_media_photo = "🖼 Rasm"
+ticket_media_video = "🎬 Video"
+ticket_media_animation = "🎞 GIF"
+ticket_media_voice = "🎤 Ovozli xabar"
+ticket_media_audio = "🎵 Audio"
+ticket_media_document = "📄 Fayl"
+ticket_media_video_note = "📹 Videoxabar"
+btn_ticket_answer = "✍️ Javob berish"
+btn_ticket_write = "✍️ Javob yozish"
+btn_ticket_write_more = "✍️ Yana javob yozish"
+btn_ticket_done = "✅ Bajarildi"
+btn_ticket_not_done = "❌ Bajarilmadi"
+btn_ticket_file = "📎 Ilovani ochish"
+ticket_not_found = "Bu murojaat topilmadi"
+ticket_needs_answer = "⚠️ Avval mijozga javob yuboring. «✍️ Javob berish» botni ochadi; javobsiz murojaatni belgilab bo‘lmaydi."
+ticket_marked_done = "✅ Bajarildi deb belgilandi"
+ticket_marked_not_done = "❌ Bajarilmadi deb belgilandi"
+# Murojaatlar kanali sozlanmagan yoki xabar unga tushmagan bo‘lsa, adminlarga shu yoziladi
+ticket_notice = "📩 Yangi murojaat #{id}. Ko‘rish va javob berish: /admin → «📨 Murojaatlar»."
+ticket_post_failed = "⚠️ Murojaat #{id} kanalga tushmadi: {error}\nU admin panelda turibdi: /admin → «📨 Murojaatlar»."
+
+reply_prompt = "✍️ <b>#{id} · {who} ga javob</b>\n\nJavobingizni yozing: matn, rasm, video, ovozli xabar yoki fayl. Mijozga bot nomidan boradi.\nYuborilgach, murojaatni «✅ Bajarildi» yoki «❌ Bajarilmadi» deb belgilaysiz."
+reply_sent = "✅ <b>Javob mijozga yuborildi.</b> Endi murojaatni belgilang 👇"
+reply_not_delivered = "⚠️ Javob mijozga yetib bormadi: u botni to‘xtatgan bo‘lishi mumkin. Telefon orqali bog‘laning."
+
+report_title = "📨 <b>Murojaatlar</b> · {day} {when}"
+report_today = "(bugun)"
+report_yesterday = "(kecha)"
+report_total = "📥 Kelgan: <b>{total}</b> ta ({people} kishidan)"
+report_replied = "💬 Javob berilgan: <b>{count}</b>"
+report_waiting = "⏳ Javobsiz qolgan: <b>{count}</b>"
+report_marked = "✅ Bajarildi: <b>{done}</b> · ❌ Bajarilmadi: <b>{not_done}</b>"
+report_none = "Bu kunda murojaat bo‘lmagan."
+report_waiting_all = "⏳ Hozir javob kutayotganlar (barcha kunlar): <b>{count}</b>"
+report_all_answered = "🎉 Barcha murojaatlarga javob berilgan!"
+btn_waiting = "⏳ Javob kutayotganlar · {count}"
+btn_waiting_short = "⏳ Javobsizlar"
+btn_report = "📨 Hisobot"
+btn_day_before = "◀️ Oldingi kun"
+btn_day_after = "Keyingi kun ▶️"
+
+waiting_title = "⏳ <b>Javob kutayotgan murojaatlar</b> — {count} ta"
+waiting_hint = "Eng eskisi birinchi. Murojaatni bosing — ko‘rib, javob yozasiz."
+waiting_item = "<b>#{id}</b> · {time} · {who} — <i>{preview}</i>"
+waiting_button = "#{id} · {who}"
+waiting_none = "🎉 <b>Javob kutayotgan murojaat yo‘q!</b>\nHammasiga javob berilgan."
+
+# ── Faol foydalanuvchilar ───────────────────────────────────
+
+users_title = "📈 <b>Foydalanuvchilar</b>"
+users_total = "👥 Jami: <b>{count}</b>"
+users_today = "🟢 Bugun faol: <b>{count}</b>"
+users_week = "📅 7 kunda faol: <b>{count}</b>"
+users_month = "🗓 30 kunda faol: <b>{count}</b>"
+users_joined_today = "🆕 Bugun qo‘shilgan: <b>{count}</b>"
+users_recent = "<b>So‘nggi faollar:</b>"
+users_item = "{number}. {name} — {time}"
 
 # «👥 Adminlar»: asosiy adminlar .env dagi ADMIN_IDS, qolganlari shu yerda qo‘shiladi.
 admins_title = "<b>👥 Adminlar</b>\nAdminlar bo‘lim va videolarni qo‘shadi, o‘chiradi, matnlarni o‘zgartiradi.\n👑 — asosiy admin (server sozlamasida), uni bu yerdan olib tashlab bo‘lmaydi."

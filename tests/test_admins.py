@@ -90,8 +90,9 @@ async def test_an_admin_can_be_named_by_username_contact_or_forward(harness: Har
     await harness.press(ADMIN_ID, ADD_ADMIN)
     await harness.send_text(ADMIN_ID, str(ADMIN_ID))
     assert last_text(harness).startswith("⚠️ User1 allaqachon admin.")
-    await harness.send_text(ADMIN_ID, "Ali")
-    assert last_text(harness).startswith("⚠️ Kontakt, forward qilingan xabar, @username yoki ID raqami kutilmoqda.")
+    for text in ("Ali", "12²"):  # «²» passes str.isdigit(), but is no number
+        await harness.send_text(ADMIN_ID, text)
+        assert last_text(harness).startswith("⚠️ Kontakt, forward qilingan xabar, @username yoki ID raqami kutilmoqda.")
 
     async with harness.session_factory() as session:
         assert [admin.user_id for admin in await repo.list_admins(session)] == [8, 9, 11]

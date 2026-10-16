@@ -6,10 +6,13 @@ from aiogram.filters.callback_data import CallbackData
 NOOP = "x"
 CONTACTS = "ct"
 WRITE_PROBLEM = "pw"
+CHANGE_PHONE = "pc"
 ADMIN_PANEL = "ap"
 CHANNEL_GUIDE = "ag"
 ADMINS = "al"
 ADD_ADMIN = "aa"
+# The deep link from a ticket's card in the support channel: /start t<ticket id>.
+TICKET_LINK = r"^t(\d{1,9})$"
 
 
 class MenuCb(CallbackData, prefix="m"):
@@ -102,6 +105,43 @@ class AdminRemoveCb(CallbackData, prefix="au"):
 
     user_id: int
     confirm: bool = False
+
+
+class SupportReportCb(CallbackData, prefix="sr"):
+    """«📨 Murojaatlar»: the report of a day, days_ago before today."""
+
+    days_ago: int = 0
+
+
+class WaitingCb(CallbackData, prefix="sw"):
+    """Tickets nobody has answered yet."""
+
+    page: int = 0
+
+
+class TicketCb(CallbackData, prefix="tk"):
+    id: int
+
+
+class TicketReplyCb(CallbackData, prefix="tr"):
+    id: int
+
+
+class TicketMarkCb(CallbackData, prefix="tm"):
+    """Done or not done: in the support channel and in the bot."""
+
+    id: int
+    done: bool
+
+
+class TicketFileCb(CallbackData, prefix="tf"):
+    """The client's voice note, file or video message, which a screen cannot show."""
+
+    id: int
+
+
+class UsersCb(CallbackData, prefix="us"):
+    page: int = 0
 
 
 class AdminFlowCb(CallbackData, prefix="af"):

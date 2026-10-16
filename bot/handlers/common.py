@@ -12,10 +12,10 @@ from bot.utils.text import html
 NOT_COMMAND = ~F.text.startswith("/")
 
 
-async def answer(callback: CallbackQuery, text: str | None = None) -> None:
-    """Remove the loading indicator on the button, optionally with a short notice."""
+async def answer(callback: CallbackQuery, text: str | None = None, *, alert: bool = False) -> None:
+    """Remove the loading indicator on the button, optionally with a short notice (alert: a pop-up to close)."""
     with suppress(TelegramAPIError):
-        await callback.answer(text)
+        await callback.answer(text, show_alert=alert)
 
 
 def render_error(error: CatalogError) -> str:

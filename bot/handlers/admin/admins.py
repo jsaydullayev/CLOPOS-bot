@@ -26,6 +26,8 @@ from bot.utils.text import html
 
 # @username or a t.me link to it.
 _USERNAME = re.compile(r"(?:@|(?:https?://)?t\.me/)([A-Za-z][A-Za-z0-9_]{3,31})")
+# Plain ASCII digits: str.isdigit() also passes «²», which int() refuses.
+_USER_ID = re.compile(r"[0-9]{1,16}")
 # Telegram user ids fit in 52 bits.
 _MAX_USER_ID = 2**52
 
@@ -81,7 +83,7 @@ async def _candidate(session: AsyncSession, message: Message) -> Candidate:
         if user is None:
             raise CatalogError("error_admin_username", username=match.group(1))
         return Candidate(user.id, user.first_name)
-    if text.isdigit() and 0 < int(text) < _MAX_USER_ID:
+    if _USER_ID.fullmatch(text) and 0 < int(text) < _MAX_USER_ID:
         return Candidate(int(text), None)
     raise CatalogError("error_admin_expected")
 
@@ -160,8 +162,10 @@ async def remove_confirmed(
     display: Display,
     admins: Admins,
 ) -> None:
-    entry = _removable(await admin_entries(session, admins), callback_data.user_id)
+    entries = await admin_entries(session, admins)
+    entry = _removable(entries, callback_data.user_id)
     if entry is None or not await admins.remove(session, entry.user_id):
+        # Another admin removed them a moment ago: the list is read again.
         await answer(callback, t("admin_not_found"))
         await display.show(db_user, admins_screen(await admin_entries(session, admins)), source=callback.message)
         return
@@ -172,7 +176,8 @@ async def remove_confirmed(
         await display.show(db_user, await menu_screen(session), source=callback.message)
         return
     notice = t("admin_removed", name=html(entry.name))
-    await display.show(db_user, admins_screen(await admin_entries(session, admins), notice), source=callback.message)
+    left = [other for other in entries if other.user_id != entry.user_id]
+    await display.show(db_user, admins_screen(left, notice), source=callback.message)
 
 
 def _removable(entries: list[AdminEntry], user_id: int) -> AdminEntry | None:

@@ -15,6 +15,7 @@ from bot.ui.callbacks import (
 )
 from bot.ui.client import category_screen, main_menu, video_screen
 from bot.ui.screen import Screen
+from bot.utils.text import visible_length
 
 CONTACTS_ROW = ["📞 Bog‘lanish va yordam"]  # always the last row of the main menu
 
@@ -104,10 +105,14 @@ def test_every_other_button_is_blue() -> None:
 
 def test_admin_panel_buttons_go_two_in_a_row() -> None:
     assert texts(admin_panel()) == [
+        ["📨 Murojaatlar", "📈 Foydalanuvchilar"],
         ["📂 Bo‘limlar", "➕ Video qo‘shish"],
         ["✏️ Salomlashuv va matnlar", "📢 Kanal shabloni"],
         ["👥 Adminlar"],
     ]
+    # Tickets nobody has answered: counted on the button, which turns green.
+    waiting = admin_panel(waiting=3).markup.inline_keyboard[0][0]
+    assert (waiting.text, waiting.style) == ("📨 Murojaatlar · 3", "success")
 
 
 def test_section_codes_are_paginated_in_list_order() -> None:
@@ -127,19 +132,31 @@ def test_main_menu_without_videos() -> None:
     assert texts(screen) == [CONTACTS_ROW]
 
 
-def test_video_list_numbers_continue_across_pages() -> None:
-    tree = CatalogTree([CategoryNode(1, None, "Kassa", 1, 1)], {1: 10})
-    videos = [video(i) for i in range(1, 11)]
-    first = category_screen(tree, tree.get(1), videos, page=0)
-    # The section's emoji and path, a short line on what to do, then the list.
+def test_every_video_of_a_section_is_in_one_card() -> None:
+    tree = CatalogTree([CategoryNode(1, None, "Kassa", 1, 1)], {1: 22})
+    screen = category_screen(tree, tree.get(1), [video(i) for i in range(1, 23)])
+    # The section's emoji and path, a short line on what to do, then the whole list: no pages.
     pick = "🎬 <b>Kassa</b>\n\n" + t("hint_videos") + "\n"
-    assert first.text == pick + "\n".join(f"{i}. Video {i}" for i in range(1, 9))
-    assert texts(first) == [["1", "2", "3", "4"], ["5", "6", "7", "8"], ["1/2", "▶️"], ["⬅️ Orqaga"]]
-    assert datas(first)[0][0] == VideoCb(id=1).pack()
+    assert screen.text == pick + "\n".join(f"{i}. Video {i}" for i in range(1, 23))
+    numbers = [str(i) for i in range(1, 23)]
+    assert texts(screen) == [numbers[i : i + 4] for i in range(0, 22, 4)] + [["⬅️ Orqaga"]]
+    assert datas(screen)[0][0] == VideoCb(id=1).pack()
 
-    screen = category_screen(tree, tree.get(1), videos, page=1)
-    assert screen.text == pick + "9. Video 9\n10. Video 10"
-    assert texts(screen) == [["9", "10"], ["◀️", "2/2"], ["⬅️ Orqaga"]]
+
+def test_a_list_too_long_for_a_message_shortens_its_titles() -> None:
+    tree = CatalogTree([CategoryNode(1, None, "Kassa", 1, 1)], {1: 95})
+    videos = [video(i) for i in range(1, 96)]
+    for item in videos:
+        item.title = "Ж" * 60
+    first = category_screen(tree, tree.get(1), videos)
+    lines = first.text.split("\n")[3:]
+    assert visible_length(first.text) <= 4096
+    assert len(lines) == 90 and lines[0].startswith("1. ЖЖЖ") and lines[0].endswith("…")
+    # Telegram fits about a hundred buttons on a message: only past 90 videos does a page begin.
+    assert texts(first)[-2:] == [["1/2", "▶️"], ["⬅️ Orqaga"]]
+    second = category_screen(tree, tree.get(1), videos, page=1)
+    assert second.text.endswith("\n95. " + "Ж" * 60)
+    assert texts(second) == [["91", "92", "93", "94"], ["95"], ["◀️", "2/2"], ["⬅️ Orqaga"]]
 
 
 def test_video_titles_in_the_list_are_escaped() -> None:
@@ -159,26 +176,25 @@ def test_nested_category_has_back_and_home() -> None:
 
 
 def test_video_screen_hides_previous_on_first_and_next_on_last() -> None:
-    tree = CatalogTree([CategoryNode(1, None, "Kassa", 1, 1)], {1: 10})
     videos = [video(i) for i in range(1, 11)]
+    ids = [item.id for item in videos]
 
-    first = video_screen(tree, videos[0], videos)
+    first = video_screen(videos[0], ids)
     assert texts(first)[0] == ["Keyingi ▶️"]
     assert first.media is not None
     assert first.media.caption == "▶️ <b>Video 1</b>"
 
-    last = video_screen(tree, videos[9], videos)
+    last = video_screen(videos[9], ids)
     assert texts(last)[0] == ["◀️ Oldingi"]
-    # Back opens the second page, where video 10 is listed.
-    assert datas(last)[1][0] == CategoryCb(id=1, page=1).pack()
+    # Back opens the list, where every video of the section is.
+    assert datas(last)[1][0] == CategoryCb(id=1).pack()
 
 
 def test_video_caption_escapes_html() -> None:
-    tree = CatalogTree([CategoryNode(1, None, "A<B", 1, 1)], {1: 1})
     item = video(1)
     item.title = "Kassa & <printer>"
     item.description = "1 < 2"
-    screen = video_screen(tree, item, [item])
+    screen = video_screen(item, [item.id])
     assert screen.media.caption == "▶️ <b>Kassa &amp; &lt;printer&gt;</b>\n1 &lt; 2"
 
 

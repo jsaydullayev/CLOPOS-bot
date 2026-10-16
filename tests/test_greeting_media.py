@@ -146,6 +146,12 @@ async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
     assert harness.telegram.of(SendVideo) == []
     assert harness.telegram.of(SendPhoto)[-1].caption == "Xush kelibsiz!"
 
+    # From now on the list goes under the new photo in place of a lesson, not the plain cover.
+    await harness.press(CLIENT_ID, VideoCb(id=video_id))
+    harness.telegram.reset()
+    await harness.press(CLIENT_ID, CategoryCb(id=section_id))
+    assert harness.telegram.of(EditMessageMedia)[-1].media.media == file_id_of("logo")
+
 
 async def test_a_muted_video_becomes_a_gif_and_resetting_the_text_keeps_it(harness: Harness) -> None:
     await seed(harness)

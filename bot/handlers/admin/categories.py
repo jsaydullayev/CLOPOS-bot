@@ -182,7 +182,7 @@ async def edit_emoji(
     await state.set_state(EmojiForm.emoji)
     await state.update_data(category_id=category.id)
     tree = await repo.load_tree(session)
-    await display.show(db_user, emoji_prompt(tree, tree.get(category.id)), source=callback.message)
+    await display.show(db_user, emoji_prompt(tree, category.id), source=callback.message)
 
 
 async def receive_emoji(
@@ -202,7 +202,7 @@ async def receive_emoji(
     emoji = (message.text or "").strip()
     if not is_emoji(emoji):
         tree = await repo.load_tree(session)
-        await display.show(db_user, emoji_prompt(tree, tree.get(category.id), t("error_expected_emoji")))
+        await display.show(db_user, emoji_prompt(tree, category.id, t("error_expected_emoji")))
         return
     category.emoji = emoji
     await state.clear()

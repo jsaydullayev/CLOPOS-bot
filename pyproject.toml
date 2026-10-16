@@ -4,6 +4,18 @@ version = "1.0.0"
 description = "Telegram video katalog boti (MVP)"
 requires-python = ">=3.11"
 
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "I"]
+
+[tool.mypy]
+files = ["bot", "scripts"]
+ignore_missing_imports = true
+check_untyped_defs = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

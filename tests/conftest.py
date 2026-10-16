@@ -12,11 +12,13 @@ from aiogram.enums import ChatType, ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import (
     AnswerCallbackQuery,
+    CopyMessage,
     DeleteMessage,
     EditMessageCaption,
     EditMessageMedia,
     EditMessageText,
     ForwardMessage,
+    GetMe,
     SendAnimation,
     SendDocument,
     SendMessage,
@@ -24,7 +26,18 @@ from aiogram.methods import (
     SendVideo,
     TelegramMethod,
 )
-from aiogram.types import Animation, CallbackQuery, Chat, Dice, Document, Message, MessageEntity, PhotoSize, Update
+from aiogram.types import (
+    Animation,
+    CallbackQuery,
+    Chat,
+    Dice,
+    Document,
+    Message,
+    MessageEntity,
+    MessageId,
+    PhotoSize,
+    Update,
+)
 from aiogram.types import User as TgUser
 from aiogram.types import Video as TgVideo
 from sqlalchemy import select
@@ -38,7 +51,9 @@ from bot.db.session import create_engine, create_session_factory
 ADMIN_ID = 1
 CLIENT_ID = 2
 CHANNEL_ID = -1001000
+SUPPORT_CHANNEL_ID = -1002000
 BOT_TOKEN = "42:TEST"
+BOT_USERNAME = "test_bot"
 COVER_FILE_ID = "file-cover"
 
 
@@ -117,6 +132,10 @@ class FakeTelegram(BaseSession):
                 chat=Chat(id=method.chat_id, type=chat_type),
                 video=video,
             )
+        if isinstance(method, GetMe):
+            return TgUser(id=42, is_bot=True, first_name="Bot", username=BOT_USERNAME)
+        if isinstance(method, CopyMessage):
+            return MessageId(message_id=next(self._message_ids))
         if isinstance(method, EditMessageMedia):
             # An uploaded file (the default cover) has no file_id yet.
             file = method.media.media
@@ -169,6 +188,7 @@ def make_settings(database_url: str = "sqlite+aiosqlite://", **overrides: Any) -
         "admin_ids": frozenset({ADMIN_ID}),
         "database_url": database_url,
         "backup_channel_id": CHANNEL_ID,
+        "support_channel_id": SUPPORT_CHANNEL_ID,
         "db_backup_enabled": False,
         "max_depth": 3,
     }
@@ -282,8 +302,8 @@ class Harness:
         )
         await self._feed(**{"edited_channel_post" if edited else "channel_post": message})
 
-    async def press(self, user_id: int, data: Any, message_id: int | None = None) -> None:
-        """Tap a button on a bot message (by default the user's active message)."""
+    async def press(self, user_id: int, data: Any, message_id: int | None = None, chat_id: int | None = None) -> None:
+        """Tap a button on a bot message: by default the user's active message, or one in a channel (chat_id)."""
         if message_id is None:
             message_id = await self.active_message(user_id)
         content: dict[str, Any] = {"text": "..."}
@@ -302,10 +322,11 @@ class Harness:
                 content = {
                     "video": TgVideo(file_id=file_id, file_unique_id=unique_id, width=1, height=1, duration=1)
                 }
+        chat = Chat(id=chat_id, type=ChatType.CHANNEL) if chat_id else Chat(id=user_id, type=ChatType.PRIVATE)
         message = Message(
             message_id=message_id,
             date=datetime.now(UTC),
-            chat=Chat(id=user_id, type=ChatType.PRIVATE),
+            chat=chat,
             from_user=TgUser(id=42, is_bot=True, first_name="Bot"),
             **content,
         )

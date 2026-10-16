@@ -3,11 +3,12 @@
 import re
 import unicodedata
 from collections.abc import Sequence
-from html import escape
+from html import escape, unescape
 
 PATH_SEPARATOR = " › "
 PATH_LIMIT = 60
 ELLIPSIS = "…"
+_TAG = re.compile(r"<[^>]+>")
 
 _EMOJI_RANGES: tuple[tuple[int, int], ...] = (
     (0x1F000, 0x1FAFF),  # pictographs, emoticons, transport, flags
@@ -84,6 +85,18 @@ def format_path(titles: Sequence[str], limit: int | None = PATH_LIMIT) -> str:
     return path
 
 
+def shorten(text: str, limit: int, *, one_line: bool = False) -> str:
+    """At most limit characters; a cut text ends with … one_line joins the lines, for lists."""
+    if one_line:
+        text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + ELLIPSIS
+
+
 def html(value: object) -> str:
     """Escape a value for Telegram HTML text."""
     return escape(str(value), quote=False)
+
+
+def visible_length(text: str) -> int:
+    """Characters Telegram counts in an HTML text or caption: the visible ones, without the tags."""
+    return len(unescape(_TAG.sub("", text)))

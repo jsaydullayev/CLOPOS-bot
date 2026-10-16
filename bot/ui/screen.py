@@ -60,6 +60,10 @@ def button(text: str, data: CallbackData | str, *, style: ButtonStyle = BUTTON_S
     )
 
 
+def url_button(text: str, url: str, *, style: ButtonStyle = BUTTON_STYLE) -> InlineKeyboardButton:
+    return InlineKeyboardButton(text=text, url=url, style=style)
+
+
 def keyboard(rows: Iterable[Sequence[InlineKeyboardButton]]) -> InlineKeyboardMarkup | None:
     filled = [list(row) for row in rows if row]
     return InlineKeyboardMarkup(inline_keyboard=filled) if filled else None
@@ -70,10 +74,15 @@ def grid(buttons: Sequence[InlineKeyboardButton], columns: int) -> list[list[Inl
     return [list(buttons[start : start + columns]) for start in range(0, len(buttons), columns)]
 
 
+def page_of(total: int, page: int, size: int = PAGE_SIZE) -> tuple[int, int]:
+    """(page, pages) for total items. A negative or too large page means the last one."""
+    pages = max(1, -(-total // size))
+    return (pages - 1 if page < 0 else min(page, pages - 1)), pages
+
+
 def paginate(items: Sequence[T], page: int, size: int = PAGE_SIZE) -> tuple[list[T], int, int]:
-    """Slice one page. A negative or too large page means the last one."""
-    pages = max(1, -(-len(items) // size))
-    page = pages - 1 if page < 0 else min(page, pages - 1)
+    """Slice one page of items already loaded; a long list is better read a page at a time with page_of."""
+    page, pages = page_of(len(items), page, size)
     start = page * size
     return list(items[start : start + size]), page, pages
 

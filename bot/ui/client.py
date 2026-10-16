@@ -9,11 +9,10 @@ from bot.db.models import Video
 from bot.services.content import Attachment
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
-from bot.ui.callbacks import CONTACTS, WRITE_PROBLEM, CategoryCb, MenuCb, VideoCb
+from bot.ui.callbacks import CHANGE_PHONE, CONTACTS, WRITE_PROBLEM, CategoryCb, MenuCb, VideoCb
 from bot.ui.screen import (
     ACCENT_STYLE,
     COLUMNS,
-    PAGE_SIZE,
     Media,
     Screen,
     button,
@@ -23,10 +22,18 @@ from bot.ui.screen import (
     paginate,
     with_notice,
 )
-from bot.utils.text import format_path, html
+from bot.utils.phone import format_phone
+from bot.utils.text import format_path, html, shorten, visible_length
 
 # Video lists show titles in the text and only their numbers on the buttons.
 NUMBER_COLUMNS = 4
+# A section's videos all go into one message. Telegram puts about a hundred buttons on a message,
+# so only a section with more videos than this goes on to a second page.
+VIDEOS_PER_CARD = 90
+# Telegram's limit for a message text (4096), with room for emoji, which it counts double.
+TEXT_LIMIT = 4000
+# A list too long for one message shortens its titles, but not below this.
+TITLE_MIN = 12
 
 
 def main_menu(
@@ -63,9 +70,16 @@ def contacts_screen(contacts: str, notice: str | None = None) -> Screen:
     return Screen(text=with_notice(contacts, notice), markup=keyboard(rows))
 
 
-def problem_prompt(error: str | None = None) -> Screen:
+def phone_prompt(error: str | None = None) -> Screen:
+    """The phone the admins call back on, asked before the first problem."""
     cancel = [[button(t("btn_cancel"), CONTACTS)]]
-    return Screen(text=with_notice(t("problem_prompt"), error), markup=keyboard(cancel))
+    return Screen(text=with_notice(t("phone_prompt"), error), markup=keyboard(cancel))
+
+
+def problem_prompt(phone: str, error: str | None = None) -> Screen:
+    rows = [[button(t("btn_change_phone"), CHANGE_PHONE), button(t("btn_cancel"), CONTACTS)]]
+    text = t("problem_prompt", phone=format_phone(phone))
+    return Screen(text=with_notice(text, error), markup=keyboard(rows))
 
 
 def section_emoji(tree: CatalogTree, node: CategoryNode) -> str:
@@ -98,34 +112,55 @@ def category_screen(
     *,
     intro: str | None = None,
 ) -> Screen:
+    # Under the admin's introduction, a short line on what to do here.
+    text = section_header(tree, node.id, intro) + "\n\n"
     if tree.kind(node.id) is Kind.CATEGORIES:
         chunk, page, pages = paginate(tree.visible_children(node.id), page)
         rows = grid([_category_button(tree, child) for child in chunk], COLUMNS)
-        # A short line on what to do here, under the admin's introduction.
-        guide = t("hint_sections")
+        text += t("hint_sections")
     else:
-        chunk_videos, page, pages = paginate(videos, page)
-        listing, rows = video_list(chunk_videos, page * PAGE_SIZE, lambda video: VideoCb(id=video.id))
-        guide = t("hint_videos") + "\n" + listing
+        text += t("hint_videos") + "\n"
+        listing, rows, page, pages = video_list(videos, page, lambda video: VideoCb(id=video.id), above=text)
+        text += listing
     rows.append(page_row(page, pages, lambda p: CategoryCb(id=node.id, page=p)))
     rows.append(_bottom_row(node))
-    text = section_header(tree, node.id, intro) + "\n\n" + guide
     return Screen(text=text, markup=keyboard(rows))
 
 
 def video_list(
-    videos: Sequence[Video], offset: int, make: Callable[[Video], CallbackData]
-) -> tuple[str, list[list[InlineKeyboardButton]]]:
-    """Numbered titles for the message text and number-only buttons under it.
+    videos: Sequence[Video], page: int, make: Callable[[Video], CallbackData], *, above: str
+) -> tuple[str, list[list[InlineKeyboardButton]], int, int]:
+    """All the section's videos for one message: numbered titles for the text, number buttons under it.
 
-    offset: how many videos come before this page, so numbers continue across pages.
+    above: the text over the list. When the whole list does not fit in the message with it,
+    the titles are shortened. Returns the list, the buttons, the page and the number of pages.
     """
-    lines = []
-    buttons = []
-    for number, video in enumerate(videos, start=offset + 1):
-        lines.append(t("video_list_item", number=number, title=html(video.title)))
-        buttons.append(button(t("video_number_button", number=number), make(video)))
-    return "\n".join(lines), grid(buttons, NUMBER_COLUMNS)
+    chunk, page, pages = paginate(videos, page, VIDEOS_PER_CARD)
+    numbers = range(page * VIDEOS_PER_CARD + 1, page * VIDEOS_PER_CARD + len(chunk) + 1)
+    limit = _title_limit([video.title for video in chunk], numbers, TEXT_LIMIT - visible_length(above))
+    lines = [
+        t("video_list_item", number=number, title=html(shorten(video.title, limit)))
+        for number, video in zip(numbers, chunk, strict=True)
+    ]
+    buttons = [
+        button(t("video_number_button", number=number), make(video))
+        for number, video in zip(numbers, chunk, strict=True)
+    ]
+    return "\n".join(lines), grid(buttons, NUMBER_COLUMNS), page, pages
+
+
+def video_page(ids: Sequence[int], video_id: int) -> int:
+    """The page of the list a video is on, for «⬅️ Orqaga» from it."""
+    return ids.index(video_id) // VIDEOS_PER_CARD
+
+
+def _title_limit(titles: Sequence[str], numbers: Sequence[int], room: int) -> int:
+    """The longest title length at which every line fits in room characters (a line: «12. Title\\n»)."""
+    numbering = sum(len(t("video_list_item", number=number, title="")) + 1 for number in numbers)
+    limit = max((len(title) for title in titles), default=0)
+    while limit > TITLE_MIN and numbering + sum(min(len(title), limit) for title in titles) > room:
+        limit -= 1
+    return limit
 
 
 def section_header(tree: CatalogTree, category_id: int, intro: str | None, note: str | None = None) -> str:
@@ -147,8 +182,8 @@ def video_caption(title: str, description: str | None) -> str:
     return "\n".join(lines)
 
 
-def video_screen(tree: CatalogTree, video: Video, siblings: Sequence[Video]) -> Screen:
-    ids = [sibling.id for sibling in siblings]
+def video_screen(video: Video, ids: Sequence[int]) -> Screen:
+    """ids: the section's videos in order, for Previous / Next."""
     index = ids.index(video.id)
 
     switch_row = []
@@ -159,8 +194,7 @@ def video_screen(tree: CatalogTree, video: Video, siblings: Sequence[Video]) -> 
     rows = [
         switch_row,
         [
-            # Back opens the list on the page where the current video is.
-            button(t("btn_back"), CategoryCb(id=video.category_id, page=index // PAGE_SIZE)),
+            button(t("btn_back"), CategoryCb(id=video.category_id, page=video_page(ids, video.id))),
             button(t("btn_home"), MenuCb()),
         ],
     ]

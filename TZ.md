@@ -59,7 +59,7 @@ flowchart TD
     S(["/start"]) --> M["Bosh menyu<br/>Asosiy bo‘limlar ro‘yxati"]
     M -->|"ichida bo‘limlar bo‘lsa"| B["Bo‘lim — ichki bo‘limlar<br/>Ichma-ich, MAX_DEPTH (5) darajagacha"]
     B -->|"ichida yana bo‘limlar bo‘lsa"| B
-    M -->|"ichida videolar bo‘lsa"| L["Bo‘lim — videolar<br/>Videolar ro‘yxati, sahifada 8 ta"]
+    M -->|"ichida videolar bo‘lsa"| L["Bo‘lim — videolar<br/>Hamma videolar bitta xabarda"]
     B -->|"ichida videolar bo‘lsa"| L
     L -->|"video tanlanadi"| V["Video<br/>Nomi va tavsifi"]
     V -->|"Oldingi / Keyingi"| V
@@ -104,8 +104,9 @@ Bo‘lim nomi
 ### 4.4 Bo‘lim — videolar ro‘yxati
 
 - Sarlavha — bo‘lim emojisi, yo‘l va bo‘lim matni (bo‘lsa), so‘ng «🎬 Videoni tanlang — raqamini bosing:». Videolar soni ko‘rsatilmaydi. Video ochilganda nomi oldida ▶️.
-- Video nomlari xabar matnida raqami bilan ro‘yxat bo‘lib chiqadi: «1. Video nomi». Tugmalarda faqat raqam, qatorda to‘rttadan. Raqam bo‘limdagi tartibni bildiradi va sahifadan sahifaga davom etadi (2-sahifa 9 dan boshlanadi).
-- Sahifada 8 ta video. Ko‘p bo‘lsa pastda «◀️ 1/2 ▶️»; birinchi sahifada «◀️», oxirgisida «▶️» ko‘rinmaydi. «1/2» tugmasi hech narsa qilmaydi.
+- Video nomlari xabar matnida raqami bilan ro‘yxat bo‘lib chiqadi: «1. Video nomi». Tugmalarda faqat raqam, qatorda to‘rttadan. Raqam bo‘limdagi tartibni bildiradi.
+- Bo‘limning hamma videolari bitta xabarda — sahifalarga bo‘linmaydi. Ro‘yxat xabarga (4096 belgi) sig‘masa, nomlar «…» bilan qisqartiriladi. Telegram bitta xabarga 100 tagacha tugma qo‘yadi, shuning uchun faqat 90 tadan ko‘p video bo‘lgandagina pastda «◀️ 1/2 ▶️» chiqadi (2-sahifa 91 dan boshlanadi).
+- Ro‘yxat rasm yoki video ostidagi izohga (1024 belgi) sig‘masa — taxminan 25 tadan ko‘p video bo‘lganda — u shu xabarda emas, yangi xabar bo‘lib chiqadi va eskisi o‘chiriladi (6-bo‘lim).
 - «⬅️ Orqaga» va «🏠 Bosh menyu» 4.3 dagi kabi ishlaydi.
 - Admin panelda ham videolar ro‘yxati xuddi shunday ko‘rinadi.
 
@@ -115,11 +116,11 @@ Bo‘lim › Ichki bo‘lim
 1. Birinchi video nomi
 2. Ikkinchi video nomi
 ...
-8. Sakkizinchi video nomi
+10. O‘ninchi video nomi
 
 [ 1 ]  [ 2 ]  [ 3 ]  [ 4 ]
 [ 5 ]  [ 6 ]  [ 7 ]  [ 8 ]
-[ 1/2 ]  [ ▶️ ]
+[ 9 ]  [ 10 ]
 [ ⬅️ Orqaga ]  [ 🏠 Bosh menyu ]
 ```
 
@@ -128,7 +129,7 @@ Bo‘lim › Ichki bo‘lim
 - Video tanlanganda ro‘yxat xabarining o‘zi videoga aylanadi (`editMessageMedia`): xabar o‘chirilmaydi, yangisi yuborilmaydi.
 - Video ostida: nomi (qalin) va tavsif (bo‘lsa). Yo‘l va tartib raqami ko‘rsatilmaydi.
 - «◀️ Oldingi» / «Keyingi ▶️» shu bo‘lim videolarini o‘sha xabarning o‘zida almashtiradi (`editMessageMedia`). Birinchi videoda «Oldingi», oxirgisida «Keyingi» ko‘rinmaydi.
-- «⬅️ Orqaga» ro‘yxatni o‘sha xabarning o‘zida, **joriy video turgan sahifada** ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova rasm qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
+- «⬅️ Orqaga» bo‘lim ro‘yxatini o‘sha xabarning o‘zida ochadi. «🏠 Bosh menyu» bosh menyuni ochadi. Telegram videoli xabarni yana oddiy matnga aylantira olmaydi, shuning uchun video o‘rniga muqova rasm qo‘yiladi va ro‘yxat uning ostida chiqadi (6-bo‘lim).
 
 ```
 [ video ]
@@ -236,7 +237,7 @@ Mijoz ko‘radigan asosiy matnlarni admin bot ichida o‘zi yozadi — dasturchi
 | Matn | Qayerda o‘zgartiriladi | Mijoz qayerda ko‘radi |
 | --- | --- | --- |
 | Salomlashuv (rasm yoki video bilan ham bo‘ladi) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu (/start) |
-| Bog‘lanish va yordam (telefon, @username, linklar) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu pastidagi yashil «📞 Bog‘lanish va yordam» tugmasi (doim). Ichida «✍️ Muammoni yozib qoldirish»: mijoz xabari (matn, rasm, video, ovoz) barcha adminlarga ismi va profil havolasi bilan nusxalanadi; daqiqasiga bitta murojaat |
+| Bog‘lanish va yordam (telefon, @username, linklar) | Admin panel → «✏️ Salomlashuv va matnlar» | Bosh menyu pastidagi yashil «📞 Bog‘lanish va yordam» tugmasi (doim). Ichida «✍️ Muammoni yozib qoldirish»: birinchi marta bot telefon raqamini so‘raydi (yozib yoki kontakt bilan; eslab qoladi, «📱 Raqamni o‘zgartirish» bilan almashtiriladi), so‘ng mijoz xabari (matn, rasm, video, ovoz, fayl) raqam bilan birga murojaat bo‘lib bazaga yoziladi va murojaatlar kanaliga (`SUPPORT_CHANNEL_ID`) kartochka bilan tushadi; daqiqasiga bitta murojaat. Albom (bir nechta rasm) bitta murojaat bo‘ladi: botdagi murojaatda birinchi rasm, kanalda esa hammasi turadi. Javob bot orqali yoziladi, javobdan keyingina «✅ Bajarildi» / «❌ Bajarilmadi» belgilanadi. Admin panelda «📨 Murojaatlar» (kunlik hisobot, javobsizlar) va «📈 Foydalanuvchilar» (faollar) |
 | Katalog bo‘sh bo‘lganda | Admin panel → «✏️ Salomlashuv va matnlar» | Botda hali video bo‘lmaganda, bosh menyuda |
 | Bo‘lim matni | Bo‘lim ichida → «✏️ Bo‘lim matni» | Bo‘limga kirganda, sarlavha ostida |
 
@@ -359,7 +360,7 @@ Bot quyidagilarning barchasi bajarilganda qabul qilinadi:
 - [ ] Video o‘chirilgach, qolganlarining raqamlari va Oldingi/Keyingi to‘g‘ri ishlaydi.
 - [ ] Bo‘sh bo‘limlar (barcha ichki darajalarida birorta video yo‘q) mijozga ko‘rinmaydi.
 - [ ] Oldingi/Keyingi bo‘lim ichida to‘g‘ri ishlaydi; birinchi va oxirgi videoda ortiqcha tugma yo‘q.
-- [ ] «Orqaga» bir daraja yuqoriga, «🏠 Bosh menyu» bosh menyuga qaytaradi; videodan «Orqaga» joriy video turgan sahifani ochadi.
+- [ ] «Orqaga» bir daraja yuqoriga, «🏠 Bosh menyu» bosh menyuga qaytaradi; videodan «Orqaga» bo‘lim ro‘yxatini ochadi; bo‘lim videolari bitta xabarda.
 - [ ] Navigatsiya paytida chatda bitta faol bot xabari qoladi, mijoz yozgan xabarlar o‘chiriladi.
 - [ ] O‘chirilgan video yoki bo‘limning eski tugmasi bosilsa, bot xato bermaydi.
 - [ ] Bot qayta ishga tushgandan keyin eski xabarlardagi tugmalar ishlaydi.

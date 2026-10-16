@@ -11,7 +11,7 @@ from aiogram.types import Chat, FSInputFile, Message, PhotoSize
 from aiogram.types import Video as TgVideo
 
 from bot.db.models import User
-from bot.ui.display import Display, ReplacedRegistry
+from bot.ui.display import Display, replaced_messages
 from bot.ui.screen import Media, Screen
 from tests.conftest import FakeTelegram
 
@@ -33,7 +33,7 @@ def bot_message(message_id: int, unique_id: str | None = None, *, photo: bool = 
 
 @pytest.fixture
 def display(bot: Bot) -> Display:
-    return Display(bot, ReplacedRegistry())
+    return Display(bot, replaced_messages())
 
 
 def calls(telegram: FakeTelegram) -> list[str]:
@@ -102,7 +102,7 @@ async def test_the_greeting_photo_is_the_cover_when_there_is_one(bot: Bot, teleg
     async def greeting() -> str:
         return "file-greeting"
 
-    display = Display(bot, ReplacedRegistry(), cover=greeting)
+    display = Display(bot, replaced_messages(), cover=greeting)
     await display.show(User(id=CHAT, last_message_id=60), TEXT, source=bot_message(60, unique_id="a"))
     media = telegram.of(EditMessageMedia)[0].media
     assert (media.type, media.media, media.caption) == ("photo", "file-greeting", "Menyu")

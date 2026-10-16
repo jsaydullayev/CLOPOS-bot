@@ -22,14 +22,16 @@ from bot.ui.screen import Screen
 
 
 async def menu_screen(session: AsyncSession, page: int = 0) -> Screen:
-    """The main menu with the greeting (and its photo or video) the admin set."""
+    """The main menu with the greeting (and its photo or video) the admin set.
+    Only the text the screen shows is read: the greeting, or the one for an empty catalog."""
     tree = await repo.load_tree(session)
+    if not tree.visible_children(None):
+        return main_menu(tree, empty_text=await text_for(session, "main_menu_empty"))
     return main_menu(
         tree,
         page,
         greeting=await text_for(session, "main_menu"),
-        empty_text=await text_for(session, "main_menu_empty"),
-        attachment=await attachment_for(session, "main_menu"),
+        attachment=await attachment_for(session, "main_menu"),  # the same row: no second query
     )
 
 
@@ -110,9 +112,8 @@ async def open_video(
         return
 
     await answer(callback)
-    tree = await repo.load_tree(session)
-    siblings = await repo.list_videos(session, video.category_id)
-    await display.show(db_user, video_screen(tree, video, siblings), source=callback.message)
+    ids = await repo.video_ids(session, video.category_id)
+    await display.show(db_user, video_screen(video, ids), source=callback.message)
 
 
 def create_router() -> Router:

@@ -11,18 +11,27 @@ from bot.texts import t
 from bot.ui.admin import admin_panel, admin_pick, channel_guide, section_codes
 from bot.ui.callbacks import ADMIN_PANEL, CHANNEL_GUIDE, AdminPickCb, SectionCodesCb
 from bot.ui.display import Display
+from bot.ui.screen import Screen
 
 
-async def panel_command(message: Message, state: FSMContext, db_user: User, display: Display) -> None:
+async def render_panel(session: AsyncSession) -> Screen:
+    return admin_panel(await repo.count_new_tickets(session))
+
+
+async def panel_command(
+    message: Message, state: FSMContext, session: AsyncSession, db_user: User, display: Display
+) -> None:
     await state.clear()
     await display.delete(message.chat.id, message.message_id)
-    await display.show(db_user, admin_panel(), edit=False)
+    await display.show(db_user, await render_panel(session), edit=False)
 
 
-async def open_panel(callback: CallbackQuery, state: FSMContext, db_user: User, display: Display) -> None:
+async def open_panel(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, db_user: User, display: Display
+) -> None:
     await state.clear()
     await answer(callback)
-    await display.show(db_user, admin_panel(), source=callback.message)
+    await display.show(db_user, await render_panel(session), source=callback.message)
 
 
 async def pick_category(

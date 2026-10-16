@@ -7,6 +7,12 @@ MEDIA_VIDEO = "video"
 MEDIA_ANIMATION = "animation"
 MEDIA_PHOTO = "photo"
 
+# A ticket's way: new → answered (a reply was sent) → done or not done (marked by an admin).
+TICKET_NEW = "new"
+TICKET_ANSWERED = "answered"
+TICKET_DONE = "done"
+TICKET_NOT_DONE = "not_done"
+
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
@@ -26,6 +32,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     first_name: Mapped[str | None] = mapped_column(String(255))
     username: Mapped[str | None] = mapped_column(String(64))
+    # Left with the first problem (+<digits>), offered again with the next ones.
+    phone: Mapped[str | None] = mapped_column(String(16))
     # The single bot message the user navigates in (see TZ, section 6).
     last_message_id: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -76,6 +84,32 @@ class BotText(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class Ticket(Base):
+    """A problem a client left in «📞 Bog‘lanish va yordam», and how the admins dealt with it."""
+
+    __tablename__ = "tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    user_name: Mapped[str] = mapped_column(String(255))  # as known when they wrote
+    username: Mapped[str | None] = mapped_column(String(64))
+    phone: Mapped[str | None] = mapped_column(String(16))  # to call the client back, as they left it
+    text: Mapped[str | None] = mapped_column(Text)  # the message text or caption, as written
+    media_type: Mapped[str | None] = mapped_column(String(16))  # photo, voice, document…; None: text only
+    file_id: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default=TICKET_NEW, index=True)
+    replies: Mapped[int] = mapped_column(Integer, default=0)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    answered_by: Mapped[int | None] = mapped_column(BigInteger)  # the admin who replied last
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_by: Mapped[int | None] = mapped_column(BigInteger)
+    # In the support channel: the copy of the client's message and the card under it with the buttons.
+    channel_id: Mapped[int | None] = mapped_column(BigInteger)
+    channel_copy_id: Mapped[int | None] = mapped_column(BigInteger)
+    channel_card_id: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class Video(Base):
