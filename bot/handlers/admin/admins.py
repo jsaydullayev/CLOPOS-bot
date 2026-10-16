@@ -1,14 +1,12 @@
 """Admin: the list of admins, adding one and taking the rights away."""
 
-import re
 from contextlib import suppress
-from dataclasses import dataclass
 
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message, MessageOriginUser
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db import repo
@@ -18,28 +16,16 @@ from bot.handlers.common import NOT_COMMAND, answer, render_error
 from bot.services.admins import Admins
 from bot.services.catalog import CatalogError
 from bot.services.commands import remove_admin_commands, set_admin_commands
+from bot.services.people import find_person, person_name
 from bot.texts import t
 from bot.ui.admin import AdminEntry, add_admin_prompt, admins_screen, confirm_remove_admin
 from bot.ui.callbacks import ADD_ADMIN, ADMINS, AdminRemoveCb
 from bot.ui.display import Display
 from bot.utils.text import html
 
-# @username or a t.me link to it.
-_USERNAME = re.compile(r"(?:@|(?:https?://)?t\.me/)([A-Za-z][A-Za-z0-9_]{3,31})")
-# Plain ASCII digits: str.isdigit() also passes «²», which int() refuses.
-_USER_ID = re.compile(r"[0-9]{1,16}")
-# Telegram user ids fit in 52 bits.
-_MAX_USER_ID = 2**52
-
 
 class AdminForm(StatesGroup):
     user = State()
-
-
-@dataclass(frozen=True, slots=True)
-class Candidate:
-    user_id: int
-    name: str | None
 
 
 async def admin_entries(session: AsyncSession, admins: Admins) -> list[AdminEntry]:
@@ -55,37 +41,7 @@ async def admin_entries(session: AsyncSession, admins: Admins) -> list[AdminEntr
 
 def _display_name(user_id: int, user: User | None, admin: Admin | None) -> str:
     first_name = (user.first_name if user is not None else None) or (admin.name if admin is not None else None)
-    username = user.username if user is not None else None
-    if first_name and username:
-        return f"{first_name} (@{username})"
-    return first_name or (f"@{username}" if username else t("admin_name_id", id=user_id))
-
-
-async def _candidate(session: AsyncSession, message: Message) -> Candidate:
-    """Who the admin means: a shared contact, a forwarded message, @username or a numeric ID."""
-    if message.contact is not None:
-        if message.contact.user_id is None:
-            raise CatalogError("error_admin_contact")
-        name = " ".join(part for part in (message.contact.first_name, message.contact.last_name) if part)
-        return Candidate(message.contact.user_id, name or None)
-    origin = message.forward_origin
-    if origin is not None:
-        # A hidden sender, a chat or a channel gives no user id.
-        if not isinstance(origin, MessageOriginUser):
-            raise CatalogError("error_admin_forward")
-        if origin.sender_user.is_bot:
-            raise CatalogError("error_admin_bot")
-        return Candidate(origin.sender_user.id, origin.sender_user.full_name)
-    text = (message.text or "").strip()
-    if match := _USERNAME.fullmatch(text):
-        # The Bot API cannot look a username up: only people who wrote to the bot are known.
-        user = await repo.find_user_by_username(session, match.group(1))
-        if user is None:
-            raise CatalogError("error_admin_username", username=match.group(1))
-        return Candidate(user.id, user.first_name)
-    if _USER_ID.fullmatch(text) and 0 < int(text) < _MAX_USER_ID:
-        return Candidate(int(text), None)
-    raise CatalogError("error_admin_expected")
+    return person_name(user_id, first_name, user.username if user is not None else None)
 
 
 async def open_admins(
@@ -113,7 +69,9 @@ async def receive_new_admin(
 ) -> None:
     await display.delete(message.chat.id, message.message_id)
     try:
-        candidate = await _candidate(session, message)
+        candidate = await find_person(session, message)
+        if candidate.is_bot:
+            raise CatalogError("error_admin_bot")
         if candidate.user_id in admins:
             users = await repo.get_users(session, [candidate.user_id])
             name = _display_name(candidate.user_id, users.get(candidate.user_id), None)

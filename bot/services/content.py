@@ -2,13 +2,19 @@
 
 A text is kept as Telegram HTML (message.html_text), so the bold, italic and
 links the admin used survive. A text the admin never changed comes from
-locales/uz.toml. The greeting can also carry a photo or a video.
+locales/uz.toml. The greeting can also carry a photo or a GIF (a video is made one).
 """
 
+import logging
 import re
+from contextlib import suppress
 from dataclasses import dataclass
 
-from aiogram.types import Message
+from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
+from aiogram.types import BufferedInputFile, Message
+from aiogram.types import Video as TgVideo
+from aiohttp import ClientError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db import repo
@@ -16,8 +22,12 @@ from bot.db.models import MEDIA_ANIMATION, MEDIA_PHOTO, MEDIA_VIDEO
 from bot.services.catalog import CatalogError
 from bot.texts import t
 
+logger = logging.getLogger(__name__)
+
 # Photo and video captions are limited to 1024 characters, so a text must fit under them.
 TEXT_MAX = 1000
+# The largest file Telegram lets a bot download.
+DOWNLOAD_MAX = 20 * 1024 * 1024
 
 # The phone, usernames and links behind the «📞 Bog‘lanish va yordam» button.
 CONTACTS_TEXT = "contacts"
@@ -83,6 +93,30 @@ def attachment_from_message(message: Message) -> Attachment | None:
         # A silent video may arrive as an animation (GIF).
         return Attachment(message.animation.file_id, message.animation.file_unique_id, MEDIA_ANIMATION)
     return None
+
+
+async def video_as_gif(bot: Bot, chat_id: int, video: TgVideo) -> Attachment:
+    """The video uploaded again as an animation. Telegram shows a video with ▶️ until it is tapped;
+    an animation plays by itself, silent and looped, like a GIF.
+
+    The upload is a message in chat_id, deleted at once. CatalogError when it cannot be done.
+    """
+    if video.file_size is not None and video.file_size > DOWNLOAD_MAX:
+        raise CatalogError("error_gif_too_big")
+    try:
+        data = await bot.download(video.file_id)
+        assert data is not None  # without a destination the file comes back in memory
+        upload = BufferedInputFile(data.read(), filename="greeting.mp4")
+        sent = await bot.send_animation(chat_id=chat_id, animation=upload, disable_notification=True)
+    except (TelegramAPIError, ClientError, TimeoutError) as error:
+        logger.warning("Video %s was not made a GIF: %s", video.file_unique_id, error)
+        raise CatalogError("error_gif_failed") from error
+    with suppress(TelegramAPIError):
+        await bot.delete_message(chat_id=chat_id, message_id=sent.message_id)
+    if sent.animation is None:
+        # Telegram kept it a video, for example for its sound.
+        raise CatalogError("error_gif_failed")
+    return Attachment(sent.animation.file_id, sent.animation.file_unique_id, MEDIA_ANIMATION)
 
 
 def is_media_file(message: Message) -> bool:

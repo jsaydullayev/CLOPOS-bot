@@ -11,6 +11,7 @@ from aiogram.types import InlineKeyboardButton
 from bot.db.models import User, Video
 from bot.db.repo import UserCounts
 from bot.services.content import TEXT_MAX, Attachment
+from bot.services.people import person_name
 from bot.services.tree import CatalogTree, CategoryNode, Kind
 from bot.texts import t
 from bot.ui.callbacks import (
@@ -18,6 +19,7 @@ from bot.ui.callbacks import (
     ADMIN_PANEL,
     ADMINS,
     CHANNEL_GUIDE,
+    FIND_USER,
     AdminAddVideoCb,
     AdminCategoryCb,
     AdminDeleteCategoryCb,
@@ -34,6 +36,8 @@ from bot.ui.callbacks import (
     AdminVideoCb,
     SectionCodesCb,
     SupportReportCb,
+    UserCb,
+    UserDeleteCb,
     UsersCb,
 )
 from bot.ui.client import (
@@ -58,6 +62,7 @@ from bot.ui.screen import (
     with_notice,
 )
 from bot.utils import clock
+from bot.utils.phone import format_phone
 from bot.utils.text import format_path, html, shorten
 
 # Full paths can be long: fewer lines per page keep the message under Telegram's 4096 characters.
@@ -65,6 +70,7 @@ CODES_PAGE_SIZE = 15
 # A page of codes fits one message (4096 characters) however deep the sections go.
 CODES_PATH_MAX = 200
 USERS_PAGE_SIZE = 10
+USER_COLUMNS = 5
 # Longer names are cut on the remove buttons, which go two in a row.
 BUTTON_NAME_MAX = 24
 
@@ -95,8 +101,16 @@ def admin_panel(waiting: int = 0) -> Screen:
     return Screen(text=t("admin_panel"), markup=keyboard(grid(buttons, COLUMNS)))
 
 
-def users_screen(counts: UserCounts, users: Sequence[User], page: int, pages: int, tz: ZoneInfo, today: date) -> Screen:
-    """«📈 Foydalanuvchilar»: how many use the bot, and who was active last."""
+def users_screen(
+    counts: UserCounts,
+    users: Sequence[User],
+    page: int,
+    pages: int,
+    tz: ZoneInfo,
+    today: date,
+    notice: str | None = None,
+) -> Screen:
+    """«📈 Foydalanuvchilar»: how many use the bot, and who was active last; a number opens the user."""
     lines = [
         t("users_title"),
         "",
@@ -108,13 +122,50 @@ def users_screen(counts: UserCounts, users: Sequence[User], page: int, pages: in
     ]
     if users:
         lines += ["", t("users_recent")]
+    buttons = []
     for number, user in enumerate(users, start=page * USERS_PAGE_SIZE + 1):
         name = html(shorten(user.first_name or t("admin_name_id", id=user.id), BUTTON_NAME_MAX))
         if user.username:
             name += f" (@{html(user.username)})"
         lines.append(t("users_item", number=number, name=name, time=clock.short_stamp(user.last_active_at, tz, today)))
-    rows = [page_row(page, pages, lambda p: UsersCb(page=p)), [button(t("btn_admin_panel"), ADMIN_PANEL)]]
-    return Screen(text="\n".join(lines), markup=keyboard(rows))
+        buttons.append(button(str(number), UserCb(id=user.id, page=page)))
+    rows = grid(buttons, USER_COLUMNS)
+    rows.append(page_row(page, pages, lambda p: UsersCb(page=p)))
+    rows.append([button(t("btn_find_user"), FIND_USER), button(t("btn_admin_panel"), ADMIN_PANEL)])
+    return Screen(text=with_notice("\n".join(lines), notice), markup=keyboard(rows))
+
+
+def user_screen(user: User, page: int, tz: ZoneInfo, *, admin: bool) -> Screen:
+    """One user: who they are, their phone and activity. An admin is not deleted from here."""
+    lines = [
+        t("user_title", name=html(person_name(user.id, user.first_name, user.username))),
+        t("user_profile", id=user.id),
+    ]
+    if user.phone:
+        lines.append(t("user_phone", phone=format_phone(user.phone)))
+    lines += [
+        t("user_joined", time=clock.stamp(user.created_at, tz)),
+        t("user_active", time=clock.stamp(user.last_active_at, tz)),
+    ]
+    row = [button(t("btn_back"), UsersCb(page=page))]
+    if admin:
+        lines += ["", t("user_is_admin")]
+    else:
+        row.insert(0, button(t("btn_delete"), UserDeleteCb(id=user.id, page=page)))
+    return Screen(text="\n".join(lines), markup=keyboard([row]))
+
+
+def confirm_delete_user(user: User, page: int) -> Screen:
+    name = html(person_name(user.id, user.first_name, user.username))
+    row = [
+        button(t("btn_delete_confirm"), UserDeleteCb(id=user.id, page=page, confirm=True)),
+        button(t("btn_cancel"), UserCb(id=user.id, page=page)),
+    ]
+    return Screen(text=t("user_delete_question", name=name), markup=keyboard([row]))
+
+
+def find_user_prompt(error: str | None = None) -> Screen:
+    return prompt(with_notice(t("find_user_prompt"), error), cancel=UsersCb())
 
 
 def admins_screen(entries: Sequence[AdminEntry], notice: str | None = None) -> Screen:

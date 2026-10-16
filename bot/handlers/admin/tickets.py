@@ -1,4 +1,4 @@
-"""Admin: tickets (the daily report, the waiting ones, answering and marking) and active users."""
+"""Admin: tickets (the daily report, the waiting and the not done ones, answering and marking)."""
 
 import re
 from datetime import timedelta
@@ -11,25 +11,23 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db import repo
-from bot.db.models import Ticket, User
+from bot.db.models import TICKET_NEW, TICKET_NOT_DONE, Ticket, User
 from bot.handlers.common import NOT_COMMAND, answer
 from bot.services.support import SupportDesk, message_content
 from bot.texts import t
-from bot.ui.admin import USERS_PAGE_SIZE, users_screen
 from bot.ui.callbacks import (
     TICKET_LINK,
+    NotDoneCb,
     SupportReportCb,
     TicketCb,
     TicketFileCb,
     TicketMarkCb,
     TicketReplyCb,
-    UsersCb,
     WaitingCb,
 )
 from bot.ui.display import Display
 from bot.ui.screen import PAGE_SIZE, Screen, page_of
-from bot.ui.tickets import reply_prompt, support_report, ticket_screen, waiting_screen
-from bot.utils import clock
+from bot.ui.tickets import not_done_screen, reply_prompt, support_report, ticket_screen, waiting_screen
 
 # How far back the daily report goes.
 REPORT_DAYS = 365
@@ -42,7 +40,17 @@ class ReplyForm(StatesGroup):
 async def render_report(session: AsyncSession, support: SupportDesk, days_ago: int = 0) -> Screen:
     day = support.today() - timedelta(days=days_ago)
     counts = await support.report(session, day)
-    return support_report(counts, day, days_ago, await repo.count_new_tickets(session))
+    waiting = await repo.count_tickets(session, TICKET_NEW)
+    not_done = await repo.count_tickets(session, TICKET_NOT_DONE)
+    return support_report(counts, day, days_ago, waiting, not_done)
+
+
+async def tickets_page(session: AsyncSession, status: str, page: int) -> tuple[list[Ticket], int, int, int]:
+    """One page of the tickets in a status: the tickets, the page, the number of pages and the total."""
+    total = await repo.count_tickets(session, status)
+    page, pages = page_of(total, page)
+    tickets = await repo.list_tickets(session, status, offset=page * PAGE_SIZE, limit=PAGE_SIZE)
+    return tickets, page, pages, total
 
 
 async def render_ticket(
@@ -78,10 +86,26 @@ async def open_waiting(
 ) -> None:
     await state.clear()
     await answer(callback)
-    total = await repo.count_new_tickets(session)
-    page, pages = page_of(total, callback_data.page)
-    tickets = await repo.list_new_tickets(session, offset=page * PAGE_SIZE, limit=PAGE_SIZE)
+    tickets, page, pages, total = await tickets_page(session, TICKET_NEW, callback_data.page)
     screen = waiting_screen(tickets, page, pages, total, support.tz, support.today())
+    await display.show(db_user, screen, source=callback.message)
+
+
+async def open_not_done(
+    callback: CallbackQuery,
+    callback_data: NotDoneCb,
+    state: FSMContext,
+    session: AsyncSession,
+    db_user: User,
+    display: Display,
+    support: SupportDesk,
+) -> None:
+    """«❌ Bajarilmaganlar»: who was left without help; each ticket opens to be answered again."""
+    await state.clear()
+    await answer(callback)
+    tickets, page, pages, total = await tickets_page(session, TICKET_NOT_DONE, callback_data.page)
+    names = await support.names(session, [ticket.resolved_by for ticket in tickets])
+    screen = not_done_screen(tickets, names, page, pages, total, support.tz, support.today())
     await display.show(db_user, screen, source=callback.message)
 
 
@@ -205,34 +229,15 @@ async def send_file(
     await support.send_file(callback.from_user.id, ticket)
 
 
-async def open_users(
-    callback: CallbackQuery,
-    callback_data: UsersCb,
-    state: FSMContext,
-    session: AsyncSession,
-    db_user: User,
-    display: Display,
-    support: SupportDesk,
-) -> None:
-    await state.clear()
-    await answer(callback)
-    today = support.today()
-    counts = await repo.user_counts(session, clock.day_bounds(today, support.tz)[0], clock.now())
-    page, pages = page_of(counts.total, callback_data.page, USERS_PAGE_SIZE)
-    users = await repo.recent_users(session, offset=page * USERS_PAGE_SIZE, limit=USERS_PAGE_SIZE)
-    screen = users_screen(counts, users, page, pages, support.tz, today)
-    await display.show(db_user, screen, source=callback.message)
-
-
 def create_router() -> Router:
     router = Router(name="admin-tickets")
     router.message.register(open_ticket_link, CommandStart(deep_link=True, magic=F.args.regexp(TICKET_LINK)))
     router.callback_query.register(open_report, SupportReportCb.filter())
     router.callback_query.register(open_waiting, WaitingCb.filter())
+    router.callback_query.register(open_not_done, NotDoneCb.filter())
     router.callback_query.register(open_ticket, TicketCb.filter())
     router.callback_query.register(ask_reply, TicketReplyCb.filter())
     router.message.register(receive_reply, ReplyForm.answer, NOT_COMMAND)
     router.callback_query.register(mark_ticket, TicketMarkCb.filter())
     router.callback_query.register(send_file, TicketFileCb.filter())
-    router.callback_query.register(open_users, UsersCb.filter())
     return router

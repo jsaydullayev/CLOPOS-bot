@@ -18,6 +18,7 @@ from aiogram.methods import (
     EditMessageMedia,
     EditMessageText,
     ForwardMessage,
+    GetFile,
     GetMe,
     SendAnimation,
     SendDocument,
@@ -32,6 +33,7 @@ from aiogram.types import (
     Chat,
     Dice,
     Document,
+    File,
     Message,
     MessageEntity,
     MessageId,
@@ -101,9 +103,9 @@ class FakeTelegram(BaseSession):
     async def close(self) -> None:
         return None
 
-    async def stream_content(self, *args: Any, **kwargs: Any) -> AsyncGenerator[bytes, None]:  # pragma: no cover
-        raise NotImplementedError
-        yield b""
+    async def stream_content(self, *args: Any, **kwargs: Any) -> AsyncGenerator[bytes, None]:
+        """A file the bot downloads (see GetFile)."""
+        yield b"mp4"
 
     async def make_request(self, bot: Bot, method: TelegramMethod[Any], timeout: int | None = None) -> Any:
         self.calls.append(method)
@@ -117,11 +119,18 @@ class FakeTelegram(BaseSession):
         if isinstance(method, (SendMessage, SendVideo, SendAnimation, SendPhoto, SendDocument, ForwardMessage)):
             message_id = next(self._message_ids)
             chat_type = ChatType.PRIVATE if method.chat_id > 0 else ChatType.CHANNEL
-            video = None
+            video = animation = None
             if isinstance(method, SendVideo):
                 self.media[message_id] = ("video", method.video)
             elif isinstance(method, SendAnimation):
-                self.media[message_id] = ("animation", method.animation)
+                # An uploaded file becomes an animation with a file_id of its own: gif-<message id>.
+                uploaded = not isinstance(method.animation, str)
+                file_id = file_id_of(f"gif-{message_id}") if uploaded else method.animation
+                self.media[message_id] = ("animation", file_id)
+                if uploaded:
+                    animation = Animation(
+                        file_id=file_id, file_unique_id=f"gif-{message_id}", width=1, height=1, duration=1
+                    )
             elif isinstance(method, SendPhoto):
                 self.media[message_id] = ("photo", method.photo)
             elif isinstance(method, ForwardMessage):
@@ -131,9 +140,12 @@ class FakeTelegram(BaseSession):
                 date=datetime.now(UTC),
                 chat=Chat(id=method.chat_id, type=chat_type),
                 video=video,
+                animation=animation,
             )
         if isinstance(method, GetMe):
             return TgUser(id=42, is_bot=True, first_name="Bot", username=BOT_USERNAME)
+        if isinstance(method, GetFile):
+            return File(file_id=method.file_id, file_unique_id=method.file_id, file_path=f"videos/{method.file_id}.mp4")
         if isinstance(method, CopyMessage):
             return MessageId(message_id=next(self._message_ids))
         if isinstance(method, EditMessageMedia):

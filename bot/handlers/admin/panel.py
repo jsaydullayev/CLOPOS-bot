@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db import repo
-from bot.db.models import User
+from bot.db.models import TICKET_NEW, User
 from bot.handlers.common import answer
 from bot.texts import t
 from bot.ui.admin import admin_panel, admin_pick, channel_guide, section_codes
@@ -15,7 +15,7 @@ from bot.ui.screen import Screen
 
 
 async def render_panel(session: AsyncSession) -> Screen:
-    return admin_panel(await repo.count_new_tickets(session))
+    return admin_panel(await repo.count_tickets(session, TICKET_NEW))
 
 
 async def panel_command(

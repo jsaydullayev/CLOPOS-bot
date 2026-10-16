@@ -1,6 +1,6 @@
 """Admin: the greeting and other client texts, and section introductions."""
 
-from aiogram import Router
+from aiogram import Bot, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
@@ -21,6 +21,7 @@ from bot.services.content import (
     is_written,
     text_for,
     text_from_message,
+    video_as_gif,
 )
 from bot.texts import t
 from bot.ui.admin import intro_prompt, text_edit_prompt, text_preview, texts_screen
@@ -102,7 +103,7 @@ async def start_edit(
 
 
 async def receive_text(
-    message: Message, state: FSMContext, session: AsyncSession, db_user: User, display: Display
+    message: Message, state: FSMContext, bot: Bot, session: AsyncSession, db_user: User, display: Display
 ) -> None:
     await display.delete(message.chat.id, message.message_id)
     data = await state.get_data()
@@ -120,6 +121,9 @@ async def receive_text(
             raise CatalogError("error_expected_media")
         if attachment is not None and key not in MEDIA_TEXTS:
             raise CatalogError("error_media_not_here")
+        if attachment is not None and message.video is not None:
+            # A video on the greeting would wait for a tap; as a GIF it plays by itself.
+            attachment = await video_as_gif(bot, message.chat.id, message.video)
         # A photo or video without a caption changes only the media; the text stays.
         value = text_from_message(message) if attachment is None or (message.caption or "").strip() else None
     except CatalogError as error:

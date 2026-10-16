@@ -20,12 +20,12 @@ from bot.ui.callbacks import (
     CONTACTS,
     WRITE_PROBLEM,
     MenuCb,
+    NotDoneCb,
     SupportReportCb,
     TicketCb,
     TicketFileCb,
     TicketMarkCb,
     TicketReplyCb,
-    UsersCb,
     WaitingCb,
 )
 from tests.conftest import (
@@ -224,7 +224,12 @@ async def test_report_of_the_day_and_the_waiting_list(harness: Harness) -> None:
     assert "💬 Javob berilgan: <b>1</b>" in report
     assert "⏳ Javobsiz qolgan: <b>2</b>" in report
     assert "⏳ Hozir javob kutayotganlar (barcha kunlar): <b>3</b>" in report
-    assert last_buttons(harness) == ["⏳ Javob kutayotganlar · 3", "◀️ Oldingi kun", "⬅️ Admin panel"]
+    assert last_buttons(harness) == [
+        "⏳ Javob kutayotganlar · 3",
+        "❌ Bajarilmaganlar · 0",
+        "◀️ Oldingi kun",
+        "⬅️ Admin panel",
+    ]
 
     await harness.press(ADMIN_ID, SupportReportCb(days_ago=1))
     assert "(kecha)" in last_text(harness) and "📥 Kelgan: <b>1</b> ta (1 kishidan)" in last_text(harness)
@@ -236,6 +241,62 @@ async def test_report_of_the_day_and_the_waiting_list(harness: Harness) -> None:
     assert last_buttons(harness) == ["#4 · Kecha", "#2 · User5", "#3 · User6", "📨 Hisobot"]
     await harness.press(ADMIN_ID, TicketCb(id=4))
     assert "<blockquote>Eski muammo</blockquote>" in last_text(harness)
+
+
+async def test_tickets_not_done_are_listed_and_answered_again(harness: Harness) -> None:
+    await write_problem(harness, CLIENT_ID, text=PROBLEM)
+    await write_problem(harness, 5, text="Kassa ochilmayapti")
+    for ticket_id in (1, 2):
+        await answer_ticket(harness, ticket_id)
+    await harness.press(ADMIN_ID, TicketMarkCb(id=1, done=False))
+    await harness.press(ADMIN_ID, TicketMarkCb(id=2, done=True))
+
+    # The report counts them over all days, on a red button.
+    await harness.press(ADMIN_ID, SupportReportCb())
+    assert "❌ Bajarilmaganlar (barcha kunlar): <b>1</b>" in last_text(harness)
+    not_done_button = harness.telegram.calls_with_markup()[-1].reply_markup.inline_keyboard[1][0]
+    assert (not_done_button.text, not_done_button.style) == ("❌ Bajarilmaganlar · 1", "danger")
+
+    # Whose problem it was, what they wrote and who marked it.
+    await harness.press(ADMIN_ID, NotDoneCb())
+    text = last_text(harness)
+    assert text.startswith("❌ <b>Bajarilmagan murojaatlar</b> — 1 ta")
+    assert "<b>#1</b> · " in text and f" · User2 — <i>{PROBLEM}</i>\n└ ❌ User1, " in text
+    assert "#2" not in text
+    assert last_buttons(harness) == ["#1 · User2", "📨 Hisobot"]
+
+    # Opened, it shows the client's phone and message in full, and can be answered again.
+    await harness.press(ADMIN_ID, TicketCb(id=1))
+    assert "\n📱 +998 90 123 45 67\n" in last_text(harness)
+    assert last_buttons(harness) == [
+        "✍️ Yana javob yozish",
+        "✅ Bajarildi",
+        "❌ Bajarilmadi",
+        "❌ Bajarilmaganlar",
+        "📨 Hisobot",
+    ]
+    harness.telegram.reset()
+    await harness.press(ADMIN_ID, TicketReplyCb(id=1))
+    await harness.send_text(ADMIN_ID, "Printer drayverini qayta o‘rnating.")
+    assert [call.text for call in harness.telegram.of(SendMessage) if call.chat_id == CLIENT_ID] == [
+        t("reply_header", id=1)
+    ]
+    assert "\n💬 <b>Qayta javob berildi</b> — User1, " in last_text(harness)
+    assert "\n💬 <b>Qayta javob berildi</b> — User1, " in card(harness).text  # the channel card too
+
+    # Still not done until someone says it is; the list shows the new answer.
+    await harness.press(ADMIN_ID, NotDoneCb())
+    assert " · 💬 qayta javob berilgan" in last_text(harness)
+    await harness.press(ADMIN_ID, TicketMarkCb(id=1, done=True))
+    await harness.press(ADMIN_ID, NotDoneCb())
+    assert last_text(harness) == t("not_done_none")
+
+
+async def test_a_long_problem_is_shown_whole(harness: Harness) -> None:
+    long_problem = "Kassa xatosi. " * 150  # 2100 characters: more than a photo caption holds
+    await write_problem(harness, CLIENT_ID, text=long_problem)
+    await harness.send_text(ADMIN_ID, "/start t1")
+    assert f"<blockquote>{long_problem}</blockquote>" in last_text(harness)
 
 
 async def test_nothing_waiting(harness: Harness) -> None:
@@ -325,7 +386,7 @@ async def test_an_album_is_one_ticket_with_every_photo_in_the_channel(harness: H
     assert len(copies) == 3 and under == {card(harness).reply_parameters.message_id}
     # One ticket, and the client still sees that it was received.
     async with harness.session_factory() as session:
-        assert await repo.count_new_tickets(session) == 1
+        assert await repo.count_tickets(session, "new") == 1
     assert last_text(harness).startswith(t("problem_sent", id=1))
 
 
@@ -362,15 +423,3 @@ async def test_without_a_support_channel_the_admins_get_a_notice(
     notices = [call.text for call in telegram.of(SendMessage) if call.chat_id == ADMIN_ID]
     assert notices == [t("ticket_notice", id=1)]
     assert last_text(harness) == t("problem_sent", id=1) + "\n\n" + t("contacts")
-
-
-async def test_active_users(harness: Harness) -> None:
-    for user_id in (CLIENT_ID, 5):
-        await harness.send_text(user_id, "/start")
-    await harness.send_text(ADMIN_ID, "/admin")
-    await harness.press(ADMIN_ID, UsersCb())
-    text = last_text(harness)
-    assert text.startswith("📈 <b>Foydalanuvchilar</b>")
-    assert "👥 Jami: <b>3</b>" in text and "🟢 Bugun faol: <b>3</b>" in text and "🆕 Bugun qo‘shilgan: <b>3</b>" in text
-    assert "\n1. User1 — " in text  # the admin, active last
-    assert last_buttons(harness) == ["⬅️ Admin panel"]

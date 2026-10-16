@@ -16,6 +16,8 @@ COLUMNS = 2
 BUTTON_STYLE = ButtonStyle.PRIMARY
 # Green, for the one button that should stand out from the blue ones (contacts).
 ACCENT_STYLE = ButtonStyle.SUCCESS
+# Red, for what went wrong and needs a look (tickets not done).
+DANGER_STYLE = ButtonStyle.DANGER
 
 T = TypeVar("T")
 

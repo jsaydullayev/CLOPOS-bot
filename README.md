@@ -120,8 +120,8 @@ Mijoz «📞 Bog‘lanish va yordam» → «✍️ Muammoni yozib qoldirish» or
 
 - **«✍️ Javob berish»** botni shu murojaatda ochadi. Admin javob yozadi (matn, rasm, video, ovoz, fayl), bot uni mijozga sarlavha bilan yuboradi, kartochkada «💬 Javob berildi» chiqadi.
 - **«✅ Bajarildi» / «❌ Bajarilmadi»** — kanalda ham, botda ham. Javob yuborilmaguncha belgilab bo‘lmaydi.
-- **`/admin` → «📨 Murojaatlar»** — kunlik hisobot: nechta keldi (necha kishidan), nechtasiga javob berildi, nechtasi javobsiz, nechtasi bajarildi; «◀️ Oldingi kun» bilan o‘tgan kunlar. «⏳ Javob kutayotganlar» — hamma kunlarning javobsizlari, eng eskisi birinchi; har biriga kirib javob yoziladi. Tugmada javobsizlar soni turadi.
-- **`/admin` → «📈 Foydalanuvchilar»** — jami, bugun / 7 / 30 kunda faollar, bugun qo‘shilganlar va so‘nggi faollar ro‘yxati.
+- **`/admin` → «📨 Murojaatlar»** — kunlik hisobot: nechta keldi (necha kishidan), nechtasiga javob berildi, nechtasi javobsiz, nechtasi bajarildi; «◀️ Oldingi kun» bilan o‘tgan kunlar. «⏳ Javob kutayotganlar» — hamma kunlarning javobsizlari, eng eskisi birinchi; har biriga kirib javob yoziladi. Tugmada javobsizlar soni turadi. «❌ Bajarilmaganlar» (qizil) — «Bajarilmadi» deb belgilangan murojaatlar: kimniki, kim va qachon belgilagan, qayta javob berilganmi; ichida mijozning telefoni va to‘liq xabari, «✍️ Yana javob yozish». «✅ Bajarildi» deb belgilanguncha ro‘yxatda qoladi.
+- **`/admin` → «📈 Foydalanuvchilar»** — jami, bugun / 7 / 30 kunda faollar, bugun qo‘shilganlar va so‘nggi faollar ro‘yxati. Raqami bosilsa foydalanuvchi kartasi ochiladi (ism, telefon, ID, faollik); «🔎 Topish» — @username, ID, forward yoki kontakt bilan. Kartada «🗑 O‘chirish» foydalanuvchini bazadan o‘chiradi (murojaatlari hisobotda qoladi; adminni avval «👥 Adminlar»da adminlikdan olish kerak). Bu bloklash emas: u qayta /start bossa, yana ro‘yxatga qo‘shiladi.
 
 ## 7. Zaxira va tiklash
 

@@ -11,6 +11,7 @@ ADMIN_PANEL = "ap"
 CHANNEL_GUIDE = "ag"
 ADMINS = "al"
 ADD_ADMIN = "aa"
+FIND_USER = "uf"
 # The deep link from a ticket's card in the support channel: /start t<ticket id>.
 TICKET_LINK = r"^t(\d{1,9})$"
 
@@ -119,6 +120,12 @@ class WaitingCb(CallbackData, prefix="sw"):
     page: int = 0
 
 
+class NotDoneCb(CallbackData, prefix="sn"):
+    """Tickets marked «❌ Bajarilmadi», until they are marked done."""
+
+    page: int = 0
+
+
 class TicketCb(CallbackData, prefix="tk"):
     id: int
 
@@ -142,6 +149,19 @@ class TicketFileCb(CallbackData, prefix="tf"):
 
 class UsersCb(CallbackData, prefix="us"):
     page: int = 0
+
+
+class UserCb(CallbackData, prefix="uc"):
+    """One user's card; page: the list page to come back to."""
+
+    id: int
+    page: int = 0
+
+
+class UserDeleteCb(CallbackData, prefix="ud"):
+    id: int
+    page: int = 0
+    confirm: bool = False
 
 
 class AdminFlowCb(CallbackData, prefix="af"):

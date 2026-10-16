@@ -1,8 +1,17 @@
 """A photo or video on the greeting: set, changed, removed, and shown to clients."""
 
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.methods import DeleteMessage, EditMessageMedia, SendAnimation, SendMessage, SendPhoto, SendVideo
-from aiogram.types import Animation, FSInputFile, MessageEntity
+from aiogram.methods import (
+    DeleteMessage,
+    EditMessageMedia,
+    GetFile,
+    SendAnimation,
+    SendMessage,
+    SendPhoto,
+    SendVideo,
+)
+from aiogram.types import Animation, BufferedInputFile, FSInputFile, MessageEntity
+from aiogram.types import Video as TgVideo
 
 from bot.services.catalog import add_video, create_category
 from bot.texts import t
@@ -42,7 +51,7 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
 
     # The button asks for a photo or video; a photo with a caption sets both.
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
-    assert last_text(harness).startswith("<b>Salomlashuv (bosh menyu)</b>\nRasm yoki videoni yuboring")
+    assert last_text(harness).startswith("<b>Salomlashuv (bosh menyu)</b>\nRasm, GIF yoki videoni yuboring")
     await harness.send_text(ADMIN_ID, "rasm o‘rniga matn")
     assert last_text(harness).startswith("⚠️ Rasm yoki video kutilmoqda.")
     bold = [MessageEntity(type="bold", offset=0, length=5)]
@@ -100,23 +109,33 @@ async def test_admin_puts_a_photo_on_the_greeting(harness: Harness) -> None:
     assert last_text(harness) == "Yangi salom"
 
 
-async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
+async def test_a_video_on_the_greeting_becomes_a_gif(harness: Harness) -> None:
     section_id, video_id = await seed(harness)
     await open_greeting(harness)
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+    harness.telegram.reset()
     await harness.send_video(ADMIN_ID, "promo", caption="Xush kelibsiz!")
 
+    # A video waits for a tap. The bot downloads it and uploads it again as an animation, which plays
+    # by itself; the upload is removed at once.
+    assert harness.telegram.of(GetFile)[0].file_id == file_id_of("promo")
+    upload = harness.telegram.of(SendAnimation)[0]
+    assert (upload.chat_id, isinstance(upload.animation, BufferedInputFile)) == (ADMIN_ID, True)
+    names = call_names(harness)
+    assert names[names.index("SendAnimation") + 1] == "DeleteMessage"
     preview = harness.telegram.of(EditMessageMedia)[-1].media
-    assert (preview.type, preview.media, preview.caption) == ("video", file_id_of("promo"), "Xush kelibsiz!")
+    assert (preview.type, preview.caption) == ("animation", "Xush kelibsiz!")
+    gif = preview.media
+    assert gif.startswith(file_id_of("gif-"))
 
-    # Clients get the main menu as the video with the greeting under it.
+    # Clients get the main menu as the GIF with the greeting under it.
     harness.telegram.reset()
     await harness.send_text(CLIENT_ID, "/start")
-    menu = harness.telegram.of(SendVideo)[-1]
-    assert (menu.video, menu.caption) == (file_id_of("promo"), "Xush kelibsiz!")
+    menu = harness.telegram.of(SendAnimation)[-1]
+    assert (menu.animation, menu.caption) == (gif, "Xush kelibsiz!")
     assert [b.text for row in menu.reply_markup.inline_keyboard for b in row] == ["🎬 Finance", CONTACTS_BUTTON]
 
-    # The greeting video plays on the main menu only: the section goes under the plain cover.
+    # The GIF plays on the main menu only: the section goes under the plain cover.
     harness.telegram.reset()
     await harness.press(CLIENT_ID, CategoryCb(id=section_id))
     cover = harness.telegram.of(EditMessageMedia)[-1].media
@@ -130,20 +149,20 @@ async def test_admin_puts_a_video_on_the_greeting(harness: Harness) -> None:
     back = harness.telegram.of(EditMessageMedia)[-1].media
     assert (back.type, back.caption) == ("photo", FINANCE)
 
-    # The main menu brings the greeting video back, all in the same message.
+    # The main menu brings the GIF back, all in the same message.
     harness.telegram.reset()
     await harness.press(CLIENT_ID, MenuCb())
     menu_again = harness.telegram.of(EditMessageMedia)[-1].media
-    assert (menu_again.type, menu_again.media) == ("video", file_id_of("promo"))
-    assert harness.telegram.of(DeleteMessage, SendMessage, SendVideo) == []
+    assert (menu_again.type, menu_again.media) == ("animation", gif)
+    assert harness.telegram.of(DeleteMessage, SendMessage, SendAnimation) == []
 
-    # A photo replaces the video.
+    # A photo replaces the GIF.
     await open_greeting(harness)
     await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
     await harness.send_photo(ADMIN_ID, "logo")
     harness.telegram.reset()
     await harness.send_text(CLIENT_ID, "/start")
-    assert harness.telegram.of(SendVideo) == []
+    assert harness.telegram.of(SendAnimation) == []
     assert harness.telegram.of(SendPhoto)[-1].caption == "Xush kelibsiz!"
 
     # From now on the list goes under the new photo in place of a lesson, not the plain cover.
@@ -208,10 +227,31 @@ async def test_menu_still_works_when_the_media_cannot_be_sent(harness: Harness) 
     await harness.send_video(ADMIN_ID, "old-bot-video", caption="Salom")
 
     harness.telegram.reset()
-    harness.telegram.fail_once(SendVideo, TelegramBadRequest(method=None, message="Bad Request: wrong file identifier"))
+    wrong_file = TelegramBadRequest(method=None, message="Bad Request: wrong file identifier")
+    harness.telegram.fail_once(SendAnimation, wrong_file)
     await harness.send_text(CLIENT_ID, "/start")
-    assert call_names(harness) == ["DeleteMessage", "SendVideo", "SendMessage"]
+    assert call_names(harness) == ["DeleteMessage", "SendAnimation", "SendMessage"]
     assert harness.telegram.of(SendMessage)[-1].text == "Salom"
+
+
+async def test_a_video_that_cannot_become_a_gif_is_asked_again(harness: Harness) -> None:
+    await open_greeting(harness)
+    await harness.press(ADMIN_ID, AdminTextEditCb(key="main_menu", media=True))
+
+    # A bot may download files of up to 20 MB.
+    big = TgVideo(file_id=file_id_of("big"), file_unique_id="big", width=1, height=1, duration=60, file_size=25 << 20)
+    await harness.send(ADMIN_ID, video=big, caption="Salom")
+    assert last_text(harness).startswith(t("error_gif_too_big"))
+
+    # Telegram may refuse it as an animation.
+    harness.telegram.fail_once(SendAnimation, TelegramBadRequest(method=None, message="Bad Request: wrong file"))
+    await harness.send_video(ADMIN_ID, "promo", caption="Salom")
+    assert last_text(harness).startswith(t("error_gif_failed"))
+
+    # Nothing was saved: the greeting has no media yet.
+    harness.telegram.reset()
+    await harness.send_text(CLIENT_ID, "/start")
+    assert harness.telegram.of(SendAnimation, SendVideo) == []
 
 
 async def test_media_is_refused_where_it_does_not_belong(harness: Harness) -> None:

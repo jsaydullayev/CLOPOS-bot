@@ -169,6 +169,16 @@ async def delete_admin(session: AsyncSession, user_id: int) -> bool:
     return True
 
 
+async def get_user(session: AsyncSession, user_id: int) -> User | None:
+    return await session.get(User, user_id)
+
+
+async def delete_user(session: AsyncSession, user: User) -> None:
+    """The user's record goes; their tickets stay in the reports."""
+    await session.delete(user)
+    await session.flush()
+
+
 async def get_users(session: AsyncSession, user_ids: list[int]) -> dict[int, User]:
     if not user_ids:
         return {}
@@ -197,11 +207,11 @@ async def last_ticket(session: AsyncSession, user_id: int) -> Ticket | None:
     return await session.scalar(query)
 
 
-async def list_new_tickets(session: AsyncSession, *, offset: int, limit: int) -> list[Ticket]:
-    """Tickets nobody has answered yet, the oldest first."""
+async def list_tickets(session: AsyncSession, status: str, *, offset: int, limit: int) -> list[Ticket]:
+    """Tickets in a status (nobody has answered, marked not done…), the oldest first."""
     query = (
         select(Ticket)
-        .where(Ticket.status == TICKET_NEW)
+        .where(Ticket.status == status)
         .order_by(Ticket.created_at, Ticket.id)
         .offset(offset)
         .limit(limit)
@@ -209,8 +219,8 @@ async def list_new_tickets(session: AsyncSession, *, offset: int, limit: int) ->
     return list(await session.scalars(query))
 
 
-async def count_new_tickets(session: AsyncSession) -> int:
-    return await session.scalar(select(func.count()).select_from(Ticket).where(Ticket.status == TICKET_NEW)) or 0
+async def count_tickets(session: AsyncSession, status: str) -> int:
+    return await session.scalar(select(func.count()).select_from(Ticket).where(Ticket.status == status)) or 0
 
 
 @dataclass(frozen=True, slots=True)
